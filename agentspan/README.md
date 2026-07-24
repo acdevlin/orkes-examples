@@ -1,8 +1,8 @@
-# Agentspan Demo Code
+# Agentspan Demos
 
-Fiddling with some sample use cases for Agentspan in Conductor, largely inspired from examples here: [https://github.com/agentspan-ai/agentspan/tree/main/sdk/python]
+Fiddling with some sample use cases for Agentspan in Conductor, largely inspired from examples here: https://github.com/agentspan-ai/agentspan/tree/main/sdk/python
 
-## Be sure to set the following in your shell's .shrc file first
+## Be sure to set the following in your shell's ~/.shrc file first
 
 ```bash
 # Pyenv support
