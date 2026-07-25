@@ -22,18 +22,18 @@ from dataclasses import dataclass
 class Settings:
     # Google Gemini model reference can be found here: 
     # https://ai.google.dev/gemini-api/docs/latest-model
-    llm_model: str = "google_gemini/gemini-3.1-flash-lite"
-    secondary_llm_model: str = "openai/gpt-4o"
+    llm_model: str = os.environ.get("AGENTSPAN_LLM_MODEL", "google_gemini/gemini-3.1-flash-lite")
+    secondary_llm_model: str = os.environ.get("AGENTSPAN_SECONDARY_LLM_MODEL", "openai/gpt-4o")
     api_key: str = os.environ.get("GEMINI_API_KEY", None)
     gcp_project: str = os.environ.get("GOOGLE_CLOUD_PROJECT", None)
 
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
-            llm_model=os.environ.get("AGENTSPAN_LLM_MODEL", "google_gemini/gemini-3.5-flash"),
-            secondary_llm_model=os.environ.get("AGENTSPAN_SECONDARY_LLM_MODEL", "openai/gpt-4o"),
-            api_key=os.environ.get("GEMINI_API_KEY", None),
-            gcp_project=os.environ.get("GOOGLE_CLOUD_PROJECT", None),
+            llm_model=cls.llm_model,
+            secondary_llm_model=cls.secondary_llm_model,
+            api_key=cls.api_key,
+            gcp_project=cls.gcp_project,
         )
 
 
