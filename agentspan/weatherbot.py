@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Agent with tools — define a tool function, agent calls it."""
+"""
+Agent with tools — defines a tool function for a weather report, agent calls it.
+"""
 
 # Required import to avoid pickling error from @tool in the current SDK.
 # Should be resolved with this pull: https://github.com/conductor-oss/python-sdk/pull/414

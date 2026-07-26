@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ 
 Guardrails validate agent input or output. On failure, you choose how to respond: 
 retry with feedback, raise an error, auto-fix, or escalate to a human. 

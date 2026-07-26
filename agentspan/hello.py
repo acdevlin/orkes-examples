@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-""" Simple agent to test that local Agentspan SDK and server are working. """
+""" 
+Simple agent to test that local Agentspan SDK and server are working. 
+"""
 
 from conductor.ai.agents import Agent, AgentRuntime
 from settings import settings
@@ -11,7 +13,6 @@ agent = Agent(
 )
 
 prompt = "Say hello and tell me a fun fact about Python."
-
 
 if __name__ == "__main__":
     with AgentRuntime() as runtime:
