@@ -8,9 +8,6 @@ retry with feedback, raise an error, auto-fix, or escalate to a human.
 import multiprocessing
 multiprocessing.set_start_method("fork", force=True)
 
-from settings import settings
-from typing import Final
-
 from conductor.ai.agents import (
     Agent, 
     AgentRuntime, 
@@ -20,12 +17,15 @@ from conductor.ai.agents import (
     OnFail
 )
 
+from settings import settings
+from typing import Final
+
 WORD_LIMIT: Final[int] = 500
 GUARD_WORD_LIMIT_MESSAGE: Final[str] = f"Please provide a more concise answer of under {WORD_LIMIT} words."
 
 @guardrail
 def word_limit(content: str) -> GuardrailResult:
-    """Keep responses concise."""
+    """Keeps responses concise."""
     if len(content.split()) > WORD_LIMIT:
         return GuardrailResult(passed=False, message=GUARD_WORD_LIMIT_MESSAGE)
     return GuardrailResult(passed=True)
