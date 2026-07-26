@@ -29,5 +29,5 @@ agent = Agent(
 
 with AgentRuntime() as runtime:
     print(f"Using model: {settings.llm_model}")
-    result = runtime.run(agent, "What should I do today in San Francisco?")
+    result = runtime.run(agent, "What should I do today in Gary, Indiana?")
     result.print_result()
