@@ -40,11 +40,14 @@ editor = Agent(
 )
 
 with AgentRuntime() as runtime:
+    pipeline = researcher >> writer >> editor
     topics = [
         "Multi-agent frameworks reshaping software development in 2026",
         "LangGraph 1.0 production deployments",
         "How much wood could a woodchuck chuck if a woodchuck could chuck wood?",
     ]
-    handles = [start(researcher >> writer >> editor, t) for t in topics]
-    results = [h.stream().get_result() for h in handles]
-    print(*results, sep="\n\n---\n\n")
+    #handles = [start(pipeline, t) for t in topics]
+    #results = [h.stream().get_result() for h in handles]
+    #print(*results, sep="\n\n---\n\n")
+    results = runtime.run(pipeline, topics[2])
+    results.print_result()
