@@ -13,10 +13,12 @@ from conductor.client.orkes_clients import OrkesClients
 from workers import *
 from prompts import configure_integrations
 
+# The account is reset to this amount at the start of every run.
 STARTING_BALANCE = 2000.0
 
 
 def start_workers(api_config):
+    # Spawns one poller process per @worker_task function in workers.py.
     task_handler = TaskHandler(
         workers=[],
         configuration=api_config,
@@ -27,12 +29,18 @@ def start_workers(api_config):
 
 
 def add_agentic_workflow(metadata_client: MetadataClient):
+    # workflow.jsonc carries // comments and trailing commas, so it's parsed
+    # with json5 rather than the strict standard-library json parser.
     with open('workflow.jsonc', 'r') as file:
         data = json5.loads(file.read())
     return metadata_client.register_workflow_def(workflow_def=data, overwrite=True)
 
 
 def print_new_actions(workflow, seen):
+    # Prints each executor decision exactly once (deduped by task id) as the
+    # workflow runs, so the console shows what actually executed rather than
+    # just the decider's plan. Both the executor and decider run once per loop
+    # iteration, so these lines line up with the worker balance logs.
     for task in workflow.tasks or []:
         if not task.task_id or task.task_id in seen or task.reference_task_name != 'llm_chat_complete_ref':
             continue
@@ -84,6 +92,8 @@ def main():
       workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
       print(f'track the agent execution here {os.getenv("CONDUCTOR_SERVER_URL")}/../execution/{workflow.workflow_id}')
       while workflow.is_running():
+          # "instructions" is the decider's plan for the next iteration; the
+          # executor output printed below is what actually ran.
           print(f'Workflow Instructions: {workflow.variables["instructions"]}')
           print_new_actions(workflow, seen)
           workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)

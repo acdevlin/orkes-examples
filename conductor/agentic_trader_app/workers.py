@@ -5,10 +5,14 @@ from typing import List
 
 from conductor.client.worker.worker_task import worker_task
 
+# Balance is shared across worker processes via a file on disk. Each read/write
+# takes an advisory file lock so concurrent trades can't race each other.
 BALANCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'balance.dat')
 
 
 def log(msg):
+    # Piped/buffered output can raise OSError on flush; swallow it so worker
+    # processes don't crash just because the console is a pipe.
     try:
         print(msg)
     except OSError:
@@ -16,6 +20,7 @@ def log(msg):
 
 
 def init_balance(amount=2000.0):
+    # Resets the account to a known starting amount before each run.
     with open(BALANCE_FILE, 'w') as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         f.write(str(amount))
@@ -37,6 +42,7 @@ def update_balance(amount):
 
 @worker_task("get_stock_price")
 def get_stock_price(ticker: str) -> float:
+    # Mock price feed: returns a random quote per symbol.
     return random.randrange(90, 120, 1)
 
 
@@ -56,6 +62,8 @@ def buy_stock(ticker: str, quantity: int, price: float) -> str:
 
 @worker_task("sell_stock")
 def sell_stock(ticker: str, quantity: int, price: float) -> str:
+    # Credits proceeds to the balance. Note: does not verify the ticker is
+    # actually held, so an over-zealous decider can sell repeatedly.
     amount = price * quantity
     current_balance = read_balance()
     current_balance = current_balance + amount
@@ -66,6 +74,7 @@ def sell_stock(ticker: str, quantity: int, price: float) -> str:
 
 @worker_task("remove_from_portfolio")
 def remove_from_portfolio(ticker: str, portfolio: List[str]) -> List[str]:
+    # Case-insensitive filter that drops the sold ticker from the portfolio.
     t = str(ticker).lower()
     return [s for s in (portfolio or []) if str(s).lower() != t]
 

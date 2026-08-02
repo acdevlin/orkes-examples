@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
-from conductor.client.ai.orchestrator import AIOrchestrator
 
+# Executor prompt: given the current "instructions" (a user ask or the
+# decider's plan), picks one of the tool commands and returns it as
+# {command, param}. Consumed by the llm_chat_complete_ref task in the loop.
 stock_agent_instructions = """
 You are a helpful agent that assists with trade booking and account management for users.
 You can execute financial queries, including placing stock trades, and run automated algorithms to implement various trading strategies.
@@ -58,6 +60,10 @@ Before you decide what command to execute, carefully review all the available co
 Note: To buy the stock, you don't need to check the price, you can directly execute the buy order.
 """
 
+# Decider prompt: looks at the current balance and portfolio and plans the next
+# trade for the following iteration. Its output is stored in "instructions" and
+# shown as "Workflow Instructions" by main.py. Deliberately never says "STOP"
+# so the DO_WHILE loop always runs the full fixed number of iterations.
 stock_agent_decider = """
 You are an automated stock trader and you optimize the next step of action based on the current portfolio if you made money or not.
 
@@ -73,9 +79,10 @@ ai_provider = "OpenAI_Key"
 ai_model_name = "gpt-4o-mini"
 
 def configure_integrations(api_config: Configuration):
+    # Saves both prompt templates to the Orkes account so the LLM tasks pick up
+    # changes on the next run. Idempotent, so safe to call every run.
     models = [f'{ai_provider}:{ai_model_name}']
 
-    ai_orchestrator = AIOrchestrator(api_configuration=api_config)
     prompt_client = OrkesPromptClient(configuration=api_config)
 
     prompt_client.save_prompt(
@@ -89,6 +96,3 @@ def configure_integrations(api_config: Configuration):
       description='Trading agent decision prompt',
       prompt_template=stock_agent_decider,
       models=models)
-
-    #ai_orchestrator.associate_prompt_template('stock_agent_instructions', ai_provider, ai_models=models)
-    #ai_orchestrator.associate_prompt_template('stock_agent_decider', ai_provider, ai_models=models)
