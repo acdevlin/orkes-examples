@@ -1,3 +1,4 @@
+import argparse
 import json5
 import logging
 import os
@@ -153,6 +154,10 @@ def main():
   Resets the account, starts the workers, re-saves the prompts, registers the
   workflow, and starts it, polling until the workflow finishes.
   """
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--verbose', action='store_true', default=False, help='Print the detailed workflow instructions executed during the run')
+  args = parser.parse_args()
+
   api_config = Configuration()
   api_config.apply_logging_config(level=logging.INFO)
   clients = OrkesClients(configuration=api_config)
@@ -209,15 +214,12 @@ def main():
   print(f'Final balance: ${final_balance:.2f}')
   print(f'Net cash gain/loss: ${change:.2f}')
   print_holdings_summary(holdings)
-  # Uncomment this to see the detailed instructions executed by the workflow.
-  # Useful for debugging, but too verbose for normal runs.
-  """
-  print('='*50 + '\n\n')
-  print('Workflow executed the following instructions:')
-  for i, instruction in enumerate(wf_instructions):
+  if args.verbose:
+    print('='*50 + '\n\n')
+    print('Workflow executed the following instructions:')
+    for i, instruction in enumerate(wf_instructions):
       print(f'Iteration {i+1}: {instruction}')
       print('-'*50)
-  """
     
   task_handler.stop_processes()
 
