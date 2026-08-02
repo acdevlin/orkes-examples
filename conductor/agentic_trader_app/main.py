@@ -99,6 +99,45 @@ def drain_log(offset):
     return offset + len(data)
 
 
+def print_holdings_summary(holdings):
+    """
+    Prints each holding's share count, current quote, purchase value, market
+    value, and gain/loss, plus the summed totals across the whole portfolio.
+    """
+    total_cost = 0.0
+    total_value = 0.0
+    print(f'Stock holdings:')
+    if holdings:
+        for h in holdings:
+            if isinstance(h, dict):
+                ticker = h.get('ticker')
+                quantity = int(h.get('quantity', 0))
+                price = get_stock_price(ticker)
+                value = quantity * price
+                total_value += value
+                avg_price = h.get('avg_price')
+                if avg_price is None:
+                    print(f'  {ticker}: {quantity} share(s) @ ${price:.2f} | value ${value:.2f}')
+                else:
+                    cost = quantity * float(avg_price)
+                    total_cost += cost
+                    diff = value - cost
+                    sign = '+' if diff >= 0 else '-'
+                    print(f'  {ticker}: {quantity} share(s) @ ${price:.2f} | bought ${cost:.2f}, '
+                          f'now ${value:.2f} ({sign}${abs(diff):.2f})')
+            else:
+                ticker = h
+                price = get_stock_price(ticker)
+                total_value += price
+                print(f'  {ticker}: 1 share(s) @ ${price:.2f} | value ${price:.2f}')
+    else:
+        print('  none')
+    total_gain = total_value - total_cost
+    print(f'Total purchase value: ${total_cost:.2f}')
+    print(f'Total market value: ${total_value:.2f}')
+    print(f'Portfolio gain/loss: ${total_gain:.2f}')
+
+
 def stop_handler(task_handler, signum, frame):
     """
     Stops child worker processes gracefully when the main process is terminated.
@@ -164,24 +203,21 @@ def main():
     final_balance = read_balance()
     change = final_balance - STARTING_BALANCE
     
+    # Final output summary of the run.
     print('Completed.')
     print(f'Starting balance: ${STARTING_BALANCE:.2f}')
     print(f'Final balance: ${final_balance:.2f}')
-    print(f'Net gain/loss: ${change:.2f}')
-    print(f'Stock holdings:')
-    if holdings:
-        for h in holdings:
-            if isinstance(h, dict):
-                print(f'  {h.get("ticker")}: {h.get("quantity")} share(s)')
-            else:
-                print(f'  {h}: 1 share(s)')
-    else:
-        print('  none')
+    print(f'Net cash gain/loss: ${change:.2f}')
+    print_holdings_summary(holdings)
+    # Uncomment this to see the detailed instructions executed by the workflow.
+    # Useful for debugging, but too verbose for normal runs.
+    """
     print('='*50 + '\n\n')
     print('Workflow executed the following instructions:')
     for i, instruction in enumerate(wf_instructions):
         print(f'Iteration {i+1}: {instruction}')
         print('-'*50)
+    """
     
     task_handler.stop_processes()
 

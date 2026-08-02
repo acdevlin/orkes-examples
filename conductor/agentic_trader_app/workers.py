@@ -184,29 +184,36 @@ def sell_stock(ticker: str, quantity: int, price: float, portfolio: List[dict]) 
 
 
 @worker_task("update_portfolio")
-def update_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> List[dict]:
+def update_portfolio(ticker: str, quantity: int, price: float, portfolio: List[dict]) -> List[dict]:
     """
-    Adds `quantity` shares of `ticker` to the portfolio and returns the
-    updated list of {ticker, quantity} holdings.
+    Adds `quantity` shares of `ticker` bought at `price` to the portfolio.
+
+    Tracks the weighted-average purchase price per share in `avg_price`, and
+    returns the updated list of {ticker, quantity, avg_price} holdings.
     """
-    q = to_quantity(quantity)
-    t = str(ticker).lower()
-    out = []
+    shares = to_quantity(quantity)
+    target = str(ticker).lower()
+    share_price = to_price(price, ticker)
+    updated = []
     added = False
     for entry in portfolio or []:
         if isinstance(entry, dict):
-            name = str(entry.get('ticker', '')).lower()
+            entry_ticker = str(entry.get('ticker', '')).lower()
             new_entry = dict(entry)
         else:
-            name = str(entry).lower()
+            entry_ticker = str(entry).lower()
             new_entry = {'ticker': entry, 'quantity': 0}
-        if name == t:
-            new_entry['quantity'] = int(new_entry.get('quantity', 0)) + q
+        if entry_ticker == target:
+            held_shares = int(new_entry.get('quantity', 0))
+            held_price = float(new_entry.get('avg_price', share_price))
+            total_shares = held_shares + shares
+            new_entry['quantity'] = total_shares
+            new_entry['avg_price'] = round((held_shares * held_price + shares * share_price) / total_shares, 2)
             added = True
-        out.append(new_entry)
+        updated.append(new_entry)
     if not added:
-        out.append({'ticker': ticker, 'quantity': q})
-    return out
+        updated.append({'ticker': ticker, 'quantity': shares, 'avg_price': share_price})
+    return updated
 
 
 @worker_task("remove_from_portfolio")
@@ -214,6 +221,9 @@ def remove_from_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> 
     """
     Sells `quantity` shares of `ticker` from the portfolio, dropping the
     entry when the position hits zero, and returns the updated holdings.
+
+    Partial sells keep the tracked avg_price so the remaining shares retain
+    their original cost basis.
     """
     q = to_quantity(quantity, portfolio, ticker)
     t = str(ticker).lower()

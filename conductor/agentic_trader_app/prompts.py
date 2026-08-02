@@ -62,7 +62,7 @@ You produce the output as the following JSON format:
 
 Before you decide what command to execute, carefully review all the available commands and pick the one that best suits the ask.
 
-The current portfolio is a list of holdings of the form {"ticker": "...", "quantity": N}. Buying a stock you already hold adds to its quantity; 
+The current portfolio is a list of holdings of the form {"ticker": "...", "quantity": N, "avg_price": P}, where P is the weighted-average purchase price per share. Buying a stock you already hold adds to its quantity; 
 selling reduces it.
 
 Note: To buy the stock, you don't need to check the price, you can directly execute the buy order.
@@ -75,7 +75,7 @@ Note: To buy the stock, you don't need to check the price, you can directly exec
 stock_agent_decider = """
 You are an automated stock trader and you optimize the next step of action based on the current portfolio if you made money or not.
 
-The current portfolio is a list of holdings of the form {"ticker": "...", "quantity": N}.
+The current portfolio is a list of holdings of the form {"ticker": "...", "quantity": N, "avg_price": P}, where P is the weighted-average purchase price per share.
 
 You can take one of the following actions:
 1. buy a stock from the nasdaq 100 - specify a quantity of shares sized to the account balance, but you prefer to not trade a single share 

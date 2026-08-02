@@ -280,11 +280,13 @@
               {
                 "name": "update_portfolio",
                 "taskReferenceName": "update_portfolio_ref",
-                // Worker adds the bought shares to the matching {ticker, quantity}
-                // holding (or appends a new one) and returns the new portfolio.
+                // Worker adds the bought shares to the matching {ticker,
+                // quantity, avg_price} holding (or appends a new one) and
+                // returns the new portfolio.
                 "inputParameters": {
                   "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
                   "quantity": "${llm_chat_complete_ref.output.result.param.quantity}",
+                  "price": "${get_stock_price_ref2.output.result}",
                   "portfolio": "${workflow.variables.portfolio}",
                 },
                 "type": "SIMPLE",
