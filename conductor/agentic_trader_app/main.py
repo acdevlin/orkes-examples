@@ -14,7 +14,7 @@ from workers import *
 from prompts import configure_integrations
 
 # The account is reset to this amount at the start of every run.
-STARTING_BALANCE = 2000.0
+STARTING_BALANCE = 20000.0
 
 
 def start_workers(api_config):
@@ -134,7 +134,7 @@ def main():
     add_agentic_workflow(metadata_client=metadata_client)
 
     request = StartWorkflowRequest(name='agentic_stock_trader_autonomous', version=1, input={
-        'instructions': 'purchase 1 share of NVIDIA stock (NVDA)'
+        'instructions': 'purchase 22 shares of NVIDIA stock (NVDA)'
     })
 
     workflow = None
@@ -168,7 +168,15 @@ def main():
     print(f'Starting balance: ${STARTING_BALANCE:.2f}')
     print(f'Final balance: ${final_balance:.2f}')
     print(f'Net gain/loss: ${change:.2f}')
-    print(f'Stock holdings: {holdings}')
+    print(f'Stock holdings:')
+    if holdings:
+        for h in holdings:
+            if isinstance(h, dict):
+                print(f'  {h.get("ticker")}: {h.get("quantity")} share(s)')
+            else:
+                print(f'  {h}: 1 share(s)')
+    else:
+        print('  none')
     print('='*50 + '\n\n')
     print('Workflow executed the following instructions:')
     for i, instruction in enumerate(wf_instructions):

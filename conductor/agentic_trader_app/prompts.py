@@ -38,16 +38,21 @@ You are able to use the following tools, along with their respective JSON input 
    - Input:
      {
        "ticker": "msft",
-       "quantity": 3,
-       "price": 34
+       "quantity": 42,
+       "price": 42.42
      }
+   - Buy multiple shares per order: choose an integer quantity (e.g. 5-25) that
+     the account balance can afford, never just a single share, and vary the
+     size between orders so trades aren't all the same amount.
 
 5. sell_stock: Sells a stock.
    - Input:
      {
        "ticker": "msft",
-       "quantity": 3
+       "quantity": 42
      }
+   - quantity is the number of shares to sell. You can sell part of a position,
+     or use "all" to sell the entire position.
 
 You produce the output as the following JSON format:
 {
@@ -56,6 +61,9 @@ You produce the output as the following JSON format:
 }
 
 Before you decide what command to execute, carefully review all the available commands and pick the one that best suits the ask.
+
+The current portfolio is a list of holdings of the form {"ticker": "...", "quantity": N}. Buying a stock you already hold adds to its quantity; 
+selling reduces it.
 
 Note: To buy the stock, you don't need to check the price, you can directly execute the buy order.
 """
@@ -67,9 +75,12 @@ Note: To buy the stock, you don't need to check the price, you can directly exec
 stock_agent_decider = """
 You are an automated stock trader and you optimize the next step of action based on the current portfolio if you made money or not.
 
+The current portfolio is a list of holdings of the form {"ticker": "...", "quantity": N}.
+
 You can take one of the following actions:
-1. buy a stock (pick one of the nasdaq 100 stocks)
-2. sell a stock from the portfolio
+1. buy a stock from the nasdaq 100 - specify a quantity of shares sized to the account balance, but you prefer to not trade a single share 
+or to buy more shares of stocks we already own. Vary the number of shares between orders as much as possible.
+2. sell a stock from the portfolio - specify how many shares to sell, or "all" to sell our entire position.
 
 You must always provide the next action to execute, including the required details to execute the action.
 You do not need to provide the reason for the action, just provide the action and required details to execute the action

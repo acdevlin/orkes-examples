@@ -14,6 +14,23 @@ BALANCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'balance
 # main.py drains and prints them in order.
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'actions.log')
 
+# Fallback share-count range used when the LLM omits a quantity or says "all"
+# on a buy. Randomized per order so trades vary in size instead of being stuck
+# at a single amount.
+MIN_QUANTITY = 1
+MAX_QUANTITY = 50
+
+
+def default_quantity() -> int:
+    """
+    Returns a random fallback share count when the LLM omits a quantity.
+    """
+    return random.randint(MIN_QUANTITY, MAX_QUANTITY)
+
+# Phrases the LLM uses to mean "the whole position". Shared by the buy path
+# (falls back to a default size) and the sell path (resolves to what's held).
+ALL_PHRASES = ('', 'all', 'everything', 'all shares')
+
 
 def log(msg):
     """
@@ -32,27 +49,43 @@ def clear_log():
         fcntl.flock(f, fcntl.LOCK_EX)
 
 
-def to_quantity(value) -> int:
+def held_quantity(portfolio, ticker) -> int:
     """
-    Normalizes an LLM-provided quantity into a share count.
+    Returns the total shares held for `ticker` in the portfolio.
+    """
+    t = str(ticker).lower()
+    total = 0
+    for entry in portfolio or []:
+        if isinstance(entry, dict):
+            if str(entry.get('ticker', '')).lower() == t:
+                total += int(entry.get('quantity', 0))
+        elif str(entry).lower() == t:
+            total += 1
+    return total
 
-    The LLM may emit quantity as an int, a numeric string ("1"), or a phrase
-    like "all". The portfolio only tracks ticker names (not per-share counts),
-    so "all" is treated as a single share.
+
+def to_quantity(value, portfolio=None, ticker=None) -> int:
+    """
+    Normalizes an LLM-provided quantity into a concrete share count.
+
+    Numeric values (ints, floats, or numeric strings) are used directly.
+    "all"-phrases mean the whole held position when a portfolio is given (sells),
+    otherwise a randomized default amount so buys vary in size. Anything else
+    unparsable also falls back to a randomized default.
     """
     if isinstance(value, bool):
-        return int(value)
+        return default_quantity()
     if isinstance(value, (int, float)):
-        return int(value)
+        return max(int(value), 1)
     if isinstance(value, str):
         s = value.strip().lower()
-        if s in ('', 'all', 'everything', 'all shares'):
-            return 1
+        if s in ALL_PHRASES:
+            return held_quantity(portfolio, ticker) or default_quantity()
         try:
-            return int(float(s))
+            return max(int(float(s)), 1)
         except ValueError:
-            return 1
-    return 1
+            return default_quantity()
+    return default_quantity()
 
 
 def to_price(value, ticker) -> float:
@@ -110,7 +143,7 @@ def get_stock_price(ticker: str) -> float:
 
 
 @worker_task("buy_stock")
-def buy_stock(ticker: str, quantity, price) -> str:
+def buy_stock(ticker: str, quantity: int, price: float) -> str:
     """
     Buys `quantity` shares of `ticker` at `price` from the account balance.
 
@@ -132,17 +165,17 @@ def buy_stock(ticker: str, quantity, price) -> str:
 
 
 @worker_task("sell_stock")
-def sell_stock(ticker: str, quantity, price) -> str:
+def sell_stock(ticker: str, quantity: int, price: float, portfolio: List[dict]) -> str:
     """
     Sells `quantity` shares of `ticker` at `price`, crediting the account.
 
-    Note: does not verify the ticker is actually held, so an over-zealous
-    decider can sell repeatedly.
+    "all" sells the entire held position. Note: does not verify the ticker is
+    actually held, so an over-zealous decider can sell repeatedly.
     """
-    quantity = to_quantity(quantity)
+    q = to_quantity(quantity, portfolio, ticker)
     price = to_price(price, ticker)
-    log(f'Selling {quantity} shares of {ticker} at {price} each.')
-    amount = price * quantity
+    log(f'Selling {q} shares of {ticker} at {price} each.')
+    amount = price * q
     current_balance = read_balance()
     current_balance = current_balance + amount
     update_balance(current_balance)
@@ -150,13 +183,54 @@ def sell_stock(ticker: str, quantity, price) -> str:
     return "OK"
 
 
-@worker_task("remove_from_portfolio")
-def remove_from_portfolio(ticker: str, portfolio: List[str]) -> List[str]:
+@worker_task("update_portfolio")
+def update_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> List[dict]:
     """
-    Returns the portfolio with the given ticker removed (case-insensitive).
+    Adds `quantity` shares of `ticker` to the portfolio and returns the
+    updated list of {ticker, quantity} holdings.
     """
+    q = to_quantity(quantity)
     t = str(ticker).lower()
-    return [s for s in (portfolio or []) if str(s).lower() != t]
+    out = []
+    added = False
+    for entry in portfolio or []:
+        if isinstance(entry, dict):
+            name = str(entry.get('ticker', '')).lower()
+            new_entry = dict(entry)
+        else:
+            name = str(entry).lower()
+            new_entry = {'ticker': entry, 'quantity': 0}
+        if name == t:
+            new_entry['quantity'] = int(new_entry.get('quantity', 0)) + q
+            added = True
+        out.append(new_entry)
+    if not added:
+        out.append({'ticker': ticker, 'quantity': q})
+    return out
+
+
+@worker_task("remove_from_portfolio")
+def remove_from_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> List[dict]:
+    """
+    Sells `quantity` shares of `ticker` from the portfolio, dropping the
+    entry when the position hits zero, and returns the updated holdings.
+    """
+    q = to_quantity(quantity, portfolio, ticker)
+    t = str(ticker).lower()
+    out = []
+    for entry in portfolio or []:
+        if isinstance(entry, dict):
+            name = str(entry.get('ticker', '')).lower()
+            new_entry = dict(entry)
+        else:
+            name = str(entry).lower()
+            new_entry = {'ticker': entry, 'quantity': 0}
+        if name == t:
+            new_entry['quantity'] = int(new_entry.get('quantity', 0)) - q
+            if new_entry['quantity'] <= 0:
+                continue
+        out.append(new_entry)
+    return out
 
 
 @worker_task("check_account_balance")

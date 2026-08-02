@@ -9,7 +9,8 @@
       "inputParameters": {
         // Seeds the loop with the user's initial ask and an empty portfolio.
         "instructions": "${workflow.input.instructions}",
-        "portfolio": []},
+        "portfolio": [],
+      },
       "type": "SET_VARIABLE",
       "decisionCases": {},
       "defaultCase": [],
@@ -21,13 +22,15 @@
       "asyncComplete": false,
       "loopOver": [],
       "onStateChange": {},
-      "permissive": false},
+      "permissive": false,
+    },
     {
       "name": "do_while",
       "taskReferenceName": "do_while_ref",
       "inputParameters": {
         // Fixed iteration count: the loop always runs exactly this many times.
-        "number": 10},
+        "number": 20,
+      },
       "type": "DO_WHILE",
       "decisionCases": {},
       "defaultCase": [],
@@ -54,9 +57,12 @@
             "messages": [
               {
                 "role": "user",
-                "message": "${workflow.variables.instructions} Respond in JSON format."}],
+                "message": "${workflow.variables.instructions} Respond in JSON format.",
+              },
+            ],
             "maxTokens": 3000,
-            "temperature": 0},
+            "temperature": 0,
+          },
           "type": "LLM_CHAT_COMPLETE",
           "decisionCases": {},
           "defaultCase": [],
@@ -68,14 +74,16 @@
           "asyncComplete": false,
           "loopOver": [],
           "onStateChange": {},
-          "permissive": false},
+          "permissive": false,
+        },
         {
           // Routes on the executor's command: sell_stock, check_balance,
           // get_stock_price, or buy_stock.
           "name": "switch",
           "taskReferenceName": "switch_ref",
           "inputParameters": {
-            "switchCaseValue": "${llm_chat_complete_ref.output.result.command}"},
+            "switchCaseValue": "${llm_chat_complete_ref.output.result.command}",
+          },
           "type": "SWITCH",
           "decisionCases": {
             "sell_stock": [
@@ -85,7 +93,8 @@
                 "name": "get_stock_price",
                 "taskReferenceName": "get_price_for_sell",
                 "inputParameters": {
-                  "ticker": "${llm_chat_complete_ref.output.result.param.ticker}"},
+                  "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
+                },
                 "type": "SIMPLE",
                 "decisionCases": {},
                 "defaultCase": [],
@@ -97,14 +106,17 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false},
+                "permissive": false,
+              },
               {
                 "name": "sell_stock",
                 "taskReferenceName": "sell_stock_ref",
                 "inputParameters": {
                   "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
                   "quantity": "${llm_chat_complete_ref.output.result.param.quantity}",
-                  "price": "${get_price_for_sell.output.result}"},
+                  "price": "${get_price_for_sell.output.result}",
+                  "portfolio": "${workflow.variables.portfolio}",
+                },
                 "type": "SIMPLE",
                 "decisionCases": {},
                 "defaultCase": [],
@@ -116,14 +128,18 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false},
+                "permissive": false,
+              },
               {
                 "name": "remove_from_portfolio",
                 "taskReferenceName": "remove_from_portfolio_ref",
-                // Worker filters the sold ticker out of the portfolio list.
+                // Worker decrements the sold shares from the matching holding
+                // and drops it from the portfolio when the position hits zero.
                 "inputParameters": {
                   "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
-                  "portfolio": "${workflow.variables.portfolio}"},
+                  "quantity": "${llm_chat_complete_ref.output.result.param.quantity}",
+                  "portfolio": "${workflow.variables.portfolio}",
+                },
                 "type": "SIMPLE",
                 "decisionCases": {},
                 "defaultCase": [],
@@ -135,14 +151,16 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false},
+                "permissive": false,
+              },
               {
                 "name": "set_variable_2",
                 "taskReferenceName": "set_variable_ref_4",
-                // No _merge here: replaces the whole portfolio with the filtered
-                // list instead of appending to it.
+                // No _merge here: replaces the whole portfolio with the updated
+                // holdings list instead of appending to it.
                 "inputParameters": {
-                  "portfolio": "${remove_from_portfolio_ref.output.result}"},
+                  "portfolio": "${remove_from_portfolio_ref.output.result}",
+                },
                 "type": "SET_VARIABLE",
                 "decisionCases": {},
                 "defaultCase": [],
@@ -154,7 +172,9 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false}],
+                "permissive": false,
+              },
+            ],
             "check_balance": [
               {
                 "name": "check_account_balance",
@@ -171,12 +191,14 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false},
+                "permissive": false,
+              },
               {
                 "name": "set_variable",
                 "taskReferenceName": "set_variable_ref",
                 "inputParameters": {
-                  "account_balance": "${check_account_balance_ref.output.result}"},
+                  "account_balance": "${check_account_balance_ref.output.result}",
+                },
                 "type": "SET_VARIABLE",
                 "decisionCases": {},
                 "defaultCase": [],
@@ -188,13 +210,16 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false}],
+                "permissive": false,
+              },
+            ],
             "get_stock_price": [
               {
                 "name": "get_stock_price",
                 "taskReferenceName": "get_stock_price_ref",
                 "inputParameters": {
-                  "ticker": "${llm_chat_complete_ref.output.result.param.ticker}"},
+                  "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
+                },
                 "type": "SIMPLE",
                 "decisionCases": {},
                 "defaultCase": [],
@@ -206,76 +231,20 @@
                 "asyncComplete": false,
                 "loopOver": [],
                 "onStateChange": {},
-                "permissive": false}],
+                "permissive": false,
+              },
+            ],
             "buy_stock": [
-              // Buy path: guard against buying a ticker already held, since the
-              // portfolio is only a list of tickers (not per-share counts).
+              // Buy path: fetch a price, buy the shares, then record the new
+              // position in the portfolio (adding to any existing holding).
               {
-                "name": "switch_holding_check",
-                "taskReferenceName": "holding_check_ref",
+                "name": "get_stock_price",
+                "taskReferenceName": "get_stock_price_ref2",
                 "inputParameters": {
                   "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
-                  "portfolio": "${workflow.variables.portfolio}"},
-                "type": "SWITCH",
-                "decisionCases": {
-                  "held": [],
-                  "ok": [
-                    {
-                      "name": "get_stock_price",
-                      "taskReferenceName": "get_stock_price_ref2",
-                      "inputParameters": {
-                        "ticker": "${llm_chat_complete_ref.output.result.param.ticker}"},
-                      "type": "SIMPLE",
-                      "decisionCases": {},
-                      "defaultCase": [],
-                      "forkTasks": [],
-                      "startDelay": 0,
-                      "joinOn": [],
-                      "optional": false,
-                      "defaultExclusiveJoinTask": [],
-                      "asyncComplete": false,
-                      "loopOver": [],
-                      "onStateChange": {},
-                      "permissive": false},
-                    {
-                      "name": "buy_stock",
-                      "taskReferenceName": "buy_stock_ref",
-                      "inputParameters": {
-                        "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
-                        "quantity": "${llm_chat_complete_ref.output.result.param.quantity}",
-                        "price": "${get_stock_price_ref2.output.result}"},
-                      "type": "SIMPLE",
-                      "decisionCases": {},
-                      "defaultCase": [],
-                      "forkTasks": [],
-                      "startDelay": 0,
-                      "joinOn": [],
-                      "optional": false,
-                      "defaultExclusiveJoinTask": [],
-                      "asyncComplete": false,
-                      "loopOver": [],
-                      "onStateChange": {},
-                      "permissive": false},
-                    {
-                      "name": "set_variable_2",
-                      "taskReferenceName": "set_variable_ref_2",
-                      // _merge: true appends the newly bought ticker to the
-                      // portfolio list.
-                      "inputParameters": {
-                        "_merge": true,
-                        "portfolio": "${llm_chat_complete_ref.output.result.param.ticker}"},
-                      "type": "SET_VARIABLE",
-                      "decisionCases": {},
-                      "defaultCase": [],
-                      "forkTasks": [],
-                      "startDelay": 0,
-                      "joinOn": [],
-                      "optional": false,
-                      "defaultExclusiveJoinTask": [],
-                      "asyncComplete": false,
-                      "loopOver": [],
-                      "onStateChange": {},
-                      "permissive": false}]},
+                },
+                "type": "SIMPLE",
+                "decisionCases": {},
                 "defaultCase": [],
                 "forkTasks": [],
                 "startDelay": 0,
@@ -284,12 +253,76 @@
                 "defaultExclusiveJoinTask": [],
                 "asyncComplete": false,
                 "loopOver": [],
-                "evaluatorType": "graaljs",
-                // Returns 'held' if the ticker is already in the portfolio,
-                // otherwise 'ok'.
-                "expression": "(function () { var t = String($.ticker || '').toLowerCase(); var p = ($.portfolio || []).map(function (s) { return String(s).toLowerCase(); }); return p.indexOf(t) !== -1 ? 'held' : 'ok'; })();",
                 "onStateChange": {},
-                "permissive": false}]},
+                "permissive": false,
+              },
+              {
+                "name": "buy_stock",
+                "taskReferenceName": "buy_stock_ref",
+                "inputParameters": {
+                  "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
+                  "quantity": "${llm_chat_complete_ref.output.result.param.quantity}",
+                  "price": "${get_stock_price_ref2.output.result}",
+                },
+                "type": "SIMPLE",
+                "decisionCases": {},
+                "defaultCase": [],
+                "forkTasks": [],
+                "startDelay": 0,
+                "joinOn": [],
+                "optional": false,
+                "defaultExclusiveJoinTask": [],
+                "asyncComplete": false,
+                "loopOver": [],
+                "onStateChange": {},
+                "permissive": false,
+              },
+              {
+                "name": "update_portfolio",
+                "taskReferenceName": "update_portfolio_ref",
+                // Worker adds the bought shares to the matching {ticker, quantity}
+                // holding (or appends a new one) and returns the new portfolio.
+                "inputParameters": {
+                  "ticker": "${llm_chat_complete_ref.output.result.param.ticker}",
+                  "quantity": "${llm_chat_complete_ref.output.result.param.quantity}",
+                  "portfolio": "${workflow.variables.portfolio}",
+                },
+                "type": "SIMPLE",
+                "decisionCases": {},
+                "defaultCase": [],
+                "forkTasks": [],
+                "startDelay": 0,
+                "joinOn": [],
+                "optional": false,
+                "defaultExclusiveJoinTask": [],
+                "asyncComplete": false,
+                "loopOver": [],
+                "onStateChange": {},
+                "permissive": false,
+              },
+              {
+                "name": "set_variable_2",
+                "taskReferenceName": "set_variable_ref_2",
+                // No _merge here: replaces the whole portfolio with the updated
+                // holdings list.
+                "inputParameters": {
+                  "portfolio": "${update_portfolio_ref.output.result}",
+                },
+                "type": "SET_VARIABLE",
+                "decisionCases": {},
+                "defaultCase": [],
+                "forkTasks": [],
+                "startDelay": 0,
+                "joinOn": [],
+                "optional": false,
+                "defaultExclusiveJoinTask": [],
+                "asyncComplete": false,
+                "loopOver": [],
+                "onStateChange": {},
+                "permissive": false,
+              },
+            ],
+          },
           "defaultCase": [],
           "forkTasks": [],
           "startDelay": 0,
@@ -301,7 +334,8 @@
           "evaluatorType": "value-param",
           "expression": "switchCaseValue",
           "onStateChange": {},
-          "permissive": false},
+          "permissive": false,
+        },
         {
           "name": "check_account_balance",
           "taskReferenceName": "check_account_balance_ref2",
@@ -317,7 +351,8 @@
           "asyncComplete": false,
           "loopOver": [],
           "onStateChange": {},
-          "permissive": false},
+          "permissive": false,
+        },
         {
           // Decider LLM: looks at the current balance and portfolio and plans
           // the next action. This text is what main.py prints as
@@ -330,16 +365,21 @@
             "messages": [
               {
                 "role": "user",
-                "message": "The current balance is ${check_account_balance_ref2.output.result} and we started with $300"},
+                "message": "The current balance is ${check_account_balance_ref2.output.result} and we started with $2000",
+              },
               {
                 "role": "system",
-                "message": "ok"},
+                "message": "ok",
+              },
               {
                 "role": "user",
-                "message": "the current portfolio is ${workflow.variables.portfolio}"}],
+                "message": "the current portfolio is ${workflow.variables.portfolio}",
+              },
+            ],
             "instructions": "stock_agent_decider",
             "promptVariables": {},
-            "temperature": 0.7},
+            "temperature": 0.7,
+          },
           "type": "LLM_CHAT_COMPLETE",
           "decisionCases": {},
           "defaultCase": [],
@@ -351,14 +391,16 @@
           "asyncComplete": false,
           "loopOver": [],
           "onStateChange": {},
-          "permissive": false},
+          "permissive": false,
+        },
         {
           // Feeds the decider's planned action back into "instructions" so the
           // next loop iteration's executor can act on it.
           "name": "set_variable_3",
           "taskReferenceName": "set_variable_ref_3",
           "inputParameters": {
-            "instructions": "${next_action_ref.output.result}"},
+            "instructions": "${next_action_ref.output.result}",
+          },
           "type": "SET_VARIABLE",
           "decisionCases": {},
           "defaultCase": [],
@@ -370,10 +412,14 @@
           "asyncComplete": false,
           "loopOver": [],
           "onStateChange": {},
-          "permissive": false}],
+          "permissive": false,
+        },
+      ],
       "evaluatorType": "graaljs",
       "onStateChange": {},
-      "permissive": false}],
+      "permissive": false,
+    },
+  ],
   "inputParameters": ["instructions"],
   "outputParameters": {},
   "failureWorkflow": "",
@@ -384,4 +430,5 @@
   "timeoutSeconds": 0,
   "variables": {},
   "inputTemplate": {},
-  "enforceSchema": true}
+  "enforceSchema": true,
+}
