@@ -79,8 +79,12 @@ ai_provider = "OpenAI_Key"
 ai_model_name = "gpt-4o-mini"
 
 def configure_integrations(api_config: Configuration):
-    # Saves both prompt templates to the Orkes account so the LLM tasks pick up
-    # changes on the next run. Idempotent, so safe to call every run.
+    """
+    Saves both prompt templates to the Orkes account.
+
+    Lets the LLM tasks pick up prompt changes on the next run. Idempotent, so
+    it's safe to call on every run.
+    """
     models = [f'{ai_provider}:{ai_model_name}']
 
     prompt_client = OrkesPromptClient(configuration=api_config)
