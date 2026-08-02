@@ -1,8 +1,7 @@
-from conductor.client.ai.configuration import LLMProvider
-from conductor.client.ai.integrations import OpenAIConfig
-from conductor.client.ai.orchestrator import AIOrchestrator
+#!/usr/bin/env python3
 from conductor.client.configuration.configuration import Configuration
-from conductor.client.orkes_clients import OrkesClients
+from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
+from conductor.client.ai.orchestrator import AIOrchestrator
 
 stock_agent_instructions = """
 You are a helpful agent that assists with trade booking and account management for users.
@@ -62,36 +61,41 @@ Note: To buy the stock, you don't need to check the price, you can directly exec
 stock_agent_decider = """
 You are an automated stock trader and you optimize the next step of action based on the current portfolio if you made money or not.
 
-you stop if your account is too low. 
+You stop if your account is too low. 
 If you decide to continue, then you must provide instructions to continue further and what to do.
 You can take one of the following actions:
 1. buy a stock (pick one of the nasdaq 100 stocks)
 2. sell a stock from the portfolio
+
 If you want to stop trading respond with a single word STOP.
+
 You should stop if the following conditions are met:
 1. the balance drops close to zero
 2. the balance is more than 2x the initial value
+
 You do not need to provide the reason for the action, just provide the action and required details to execute the action
 """
 
+ai_provider = "OpenAI_Key"
+ai_model_name = "gpt-4o-mini"
+
 def configure_integrations(api_config: Configuration):
-    models = ['gpt-5.6-luna']
+    models = [f'{ai_provider}:{ai_model_name}']
 
-    clients = OrkesClients(configuration=api_config)
-    prompt_client = clients.get_prompt_client()
     ai_orchestrator = AIOrchestrator(api_configuration=api_config)
+    prompt_client = OrkesPromptClient(configuration=api_config)
 
-    prompt_client.save_prompt('stock_agent_instructions',
-                              description='trading agent instructions',
-                              prompt_template=stock_agent_instructions)
+    prompt_client.save_prompt(
+      prompt_name='stock_agent_instructions',
+      description='Trading agent instructions',
+      prompt_template=stock_agent_instructions,
+      models=models)
 
-    prompt_client.save_prompt('stock_agent_decider',
-                              description='trading agent decision prompt',
-                              prompt_template=stock_agent_decider)
+    prompt_client.save_prompt(
+      prompt_name='stock_agent_decider',
+      description='Trading agent decision prompt',
+      prompt_template=stock_agent_decider,
+      models=models)
 
-    ai_orchestrator.add_ai_integration('openai', LLMProvider.OPEN_AI,
-                                       description='openai integration',
-                                       models=models, config=OpenAIConfig())
-
-    ai_orchestrator.associate_prompt_template('stock_agent_instructions', 'openai', ai_models=models)
-    ai_orchestrator.associate_prompt_template('stock_agent_decider', 'openai', ai_models=models)
+    #ai_orchestrator.associate_prompt_template('stock_agent_instructions', ai_provider, ai_models=models)
+    #ai_orchestrator.associate_prompt_template('stock_agent_decider', ai_provider, ai_models=models)

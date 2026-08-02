@@ -45,9 +45,9 @@
           "name": "llm_chat_complete",
           "taskReferenceName": "llm_chat_complete_ref",
           "inputParameters": {
-            "jsonOutput": true,
-            "llmProvider": "openai",
-            "model": "gpt-5.6-luna",
+            "jsonOutput": false,
+            "llmProvider": "OpenAI_Key",
+            "model": "gpt-4o-mini",
             "instructions": "stock_agent_instructions",
             "promptVariables": {},
             "messages": [
@@ -298,8 +298,8 @@
           "name": "llm_chat_complete_1",
           "taskReferenceName": "next_action_ref",
           "inputParameters": {
-            "llmProvider": "openai",
-            "model": "gpt-5.6-luna",
+            "llmProvider": "OpenAI_Key",
+            "model": "gpt-4o-mini",
             "messages": [
               {
                 "role": "user",
@@ -356,9 +356,7 @@
       "permissive": false
     }
   ],
-  "inputParameters": [
-    "instructions"
-  ],
+  "inputParameters": ["instructions"],
   "outputParameters": {},
   "failureWorkflow": "",
   "schemaVersion": 2,
