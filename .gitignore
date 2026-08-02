@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Runtime state files
+balance.dat
+
 # C extensions
 *.so
 

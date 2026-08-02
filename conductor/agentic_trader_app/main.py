@@ -1,6 +1,8 @@
-import json
+import json5
 import logging
 import os
+import signal
+import sys
 import time
 
 from conductor.client.automator.task_handler import TaskHandler
@@ -10,6 +12,8 @@ from conductor.client.metadata_client import MetadataClient
 from conductor.client.orkes_clients import OrkesClients
 from workers import *
 from prompts import configure_integrations
+
+STARTING_BALANCE = 2000.0
 
 
 def start_workers(api_config):
@@ -23,9 +27,30 @@ def start_workers(api_config):
 
 
 def add_agentic_workflow(metadata_client: MetadataClient):
-    with open('workflow.json', 'r') as file:
-        data = json.load(file)
+    with open('workflow.jsonc', 'r') as file:
+        data = json5.loads(file.read())
     return metadata_client.register_workflow_def(workflow_def=data, overwrite=True)
+
+
+def print_new_actions(workflow, seen):
+    for task in workflow.tasks or []:
+        if not task.task_id or task.task_id in seen or task.reference_task_name != 'llm_chat_complete_ref':
+            continue
+        seen.add(task.task_id)
+        res = (task.output_data or {}).get('result') or {}
+        cmd = res.get('command')
+        if not cmd:
+            continue
+        param = res.get('param') or {}
+        detail = ' '.join(f'{k}={v}' for k, v in param.items())
+        print(f'  Executed [iteration {task.iteration}]: {cmd} {detail}'.rstrip())
+
+
+# Used to stop child worker processes gracefully when the main process is terminated.
+# This ensures proper resource cleanup and avoids orphaned processes.
+def stop_handler(task_handler, signum, frame):
+    task_handler.stop_processes()
+    sys.exit(0)
 
 
 def main():
@@ -35,28 +60,47 @@ def main():
     workflow_client = clients.get_workflow_client()
     metadata_client = clients.get_metadata_client()
 
+    init_balance(amount=STARTING_BALANCE)
     task_handler = start_workers(api_config=api_config)
 
-    # Only need to configure integrations once, since they are saved to your
-    # Orkes account.
-    #configure_integrations(api_config=api_config)
+    # Kills child processes gracefully regardless of how script is terminated
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda s, f: stop_handler(task_handler, s, f))
+
+    # Re-saves the prompt templates to the Orkes account each run so prompt
+    # changes in prompts.py take effect. This is idempotent.
+    configure_integrations(api_config=api_config)
     add_agentic_workflow(metadata_client=metadata_client)
 
     request = StartWorkflowRequest(name='agentic_stock_trader_autonomous', version=1, input={
-        'instructions': 'purchase 1 share of google'
+        'instructions': 'purchase 1 share of NVIDIA stock (NVDA)'
     })
 
+    workflow = None
+    seen = set()
+    
     try:
       workflow_id = workflow_client.start_workflow(start_workflow_request=request)
-      workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=False)
+      workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
       print(f'track the agent execution here {os.getenv("CONDUCTOR_SERVER_URL")}/../execution/{workflow.workflow_id}')
       while workflow.is_running():
-          print(f'{workflow.variables["instructions"]}')
-          workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=False)
+          print(f'Workflow Instructions: {workflow.variables["instructions"]}')
+          print_new_actions(workflow, seen)
+          workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
           time.sleep(5)
     except Exception as e:
       print(f'Error starting workflow: {e}')
-    print('Completed.  Did we make money?')
+      
+    holdings = workflow.variables.get('portfolio', []) if workflow else []
+    final_balance = read_balance()
+    change = final_balance - STARTING_BALANCE
+    
+    print('Completed.')
+    print(f'Starting balance: ${STARTING_BALANCE:.2f}')
+    print(f'Final balance: ${final_balance:.2f}')
+    print(f'Net gain/loss: ${change:.2f}')
+    print(f'Stock holdings: {holdings}')
+    
     task_handler.stop_processes()
 
 

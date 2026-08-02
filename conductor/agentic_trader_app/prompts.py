@@ -61,18 +61,11 @@ Note: To buy the stock, you don't need to check the price, you can directly exec
 stock_agent_decider = """
 You are an automated stock trader and you optimize the next step of action based on the current portfolio if you made money or not.
 
-You stop if your account is too low. 
-If you decide to continue, then you must provide instructions to continue further and what to do.
 You can take one of the following actions:
 1. buy a stock (pick one of the nasdaq 100 stocks)
 2. sell a stock from the portfolio
 
-If you want to stop trading respond with a single word STOP.
-
-You should stop if the following conditions are met:
-1. the balance drops close to zero
-2. the balance is more than 2x the initial value
-
+You must always provide the next action to execute, including the required details to execute the action.
 You do not need to provide the reason for the action, just provide the action and required details to execute the action
 """
 
