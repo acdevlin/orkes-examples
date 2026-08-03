@@ -13,10 +13,9 @@ from conductor.client.metadata_client import MetadataClient
 from conductor.client.orkes_clients import OrkesClients
 from workers import *
 from prompts import configure_integrations
+from config import LOG_FILE, STARTING_BALANCE, WORKFLOW_FILE, WORKFLOW_NAME, WORKFLOW_VERSION, WORKFLOW_INPUT_INSTRUCTIONS
 
-# The account is reset to this amount at the start of every run.
-STARTING_BALANCE = 20000.0
-
+### BEGIN HELPER FUNCTIONS ###
 
 def start_workers(api_config):
   """
@@ -30,7 +29,6 @@ def start_workers(api_config):
   task_handler.start_processes()
   return task_handler
 
-
 def add_agentic_workflow(metadata_client: MetadataClient):
   """
   Registers workflow.jsonc as the agentic stock trader workflow.
@@ -38,10 +36,9 @@ def add_agentic_workflow(metadata_client: MetadataClient):
   workflow.jsonc carries // comments and trailing commas, so it's parsed with
   json5 rather than the strict standard-library json parser.
   """
-  with open('workflow.jsonc', 'r') as file:
+  with open(WORKFLOW_FILE, 'r') as file:
     data = json5.loads(file.read())
   return metadata_client.register_workflow_def(workflow_def=data, overwrite=True)
-
 
 def print_new_actions(workflow, seen):
   """
@@ -64,7 +61,6 @@ def print_new_actions(workflow, seen):
     detail = ' '.join(f'{k}={v}' for k, v in param.items())
     print(f'  Executed [iteration {task.iteration}]: {cmd} {detail}'.rstrip())
 
-
 def print_new_plans(workflow, seen):
   """
   Prints the decider's plan for each loop iteration exactly once.
@@ -83,7 +79,6 @@ def print_new_plans(workflow, seen):
     plan = ' '.join(str(plan).split())
     print(f'  Plan [iteration {task.iteration}]: {plan}')
 
-
 def drain_log(offset):
   """
   Prints any worker log lines appended since the last poll.
@@ -98,7 +93,6 @@ def drain_log(offset):
   if data:
     print(data, end='', flush=True)
   return offset + len(data)
-
 
 def print_holdings_summary(holdings):
   """
@@ -138,7 +132,6 @@ def print_holdings_summary(holdings):
   print(f'Total market value: ${total_value:.2f}')
   print(f'Portfolio gain/loss: ${total_gain:.2f}')
 
-
 def stop_handler(task_handler, signum, frame):
   """
   Stops child worker processes gracefully when the main process is terminated.
@@ -146,6 +139,7 @@ def stop_handler(task_handler, signum, frame):
   task_handler.stop_processes()
   sys.exit(0)
 
+### END HELPER FUNCTIONS ###
 
 def main():
   """
@@ -177,8 +171,8 @@ def main():
   configure_integrations(api_config=api_config)
   add_agentic_workflow(metadata_client=metadata_client)
 
-  request = StartWorkflowRequest(name='agentic_stock_trader_autonomous', version=1, input={
-      'instructions': 'purchase 22 shares of NVIDIA stock (NVDA)'
+  request = StartWorkflowRequest(name=WORKFLOW_NAME, version=WORKFLOW_VERSION, input={
+      'instructions': WORKFLOW_INPUT_INSTRUCTIONS
   })
 
   workflow = None

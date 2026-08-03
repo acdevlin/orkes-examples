@@ -1,36 +1,17 @@
 import fcntl
-import os
 import random
 from typing import List
 
 from conductor.client.worker.worker_task import worker_task
+from config import ALL_PHRASES, BALANCE_FILE, LOG_FILE, MAX_QUANTITY, MIN_QUANTITY, STARTING_BALANCE
 
-# Balance is shared across worker processes via a file on disk. Each read/write
-# takes an advisory file lock so concurrent trades can't race each other.
-BALANCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'balance.dat')
-
-# Workers run in separate processes, so they can't safely write to the main
-# process's stdout. Instead they append log lines here (flock-serialized) and
-# main.py drains and prints them in order.
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'actions.log')
-
-# Fallback share-count range used when the LLM omits a quantity or says "all"
-# on a buy. Randomized per order so trades vary in size instead of being stuck
-# at a single amount.
-MIN_QUANTITY = 1
-MAX_QUANTITY = 50
-
+### BEGIN HELPER FUNCTIONS ###
 
 def default_quantity() -> int:
   """
   Returns a random fallback share count when the LLM omits a quantity.
   """
   return random.randint(MIN_QUANTITY, MAX_QUANTITY)
-
-# Phrases the LLM uses to mean "the whole position". Shared by the buy path
-# (falls back to a default size) and the sell path (resolves to what's held).
-ALL_PHRASES = ('', 'all', 'everything', 'all shares')
-
 
 def log(msg):
   """
@@ -40,7 +21,6 @@ def log(msg):
     fcntl.flock(f, fcntl.LOCK_EX)
     f.write(msg + '\n')
 
-
 def clear_log():
   """
   Truncates the shared log so a fresh run starts with an empty log.
@@ -48,21 +28,19 @@ def clear_log():
   with open(LOG_FILE, 'w') as f:
     fcntl.flock(f, fcntl.LOCK_EX)
 
-
 def held_quantity(portfolio, ticker) -> int:
   """
   Returns the total shares held for `ticker` in the portfolio.
   """
-  t = str(ticker).lower()
+  ticker = str(ticker).lower()
   total = 0
   for entry in portfolio or []:
     if isinstance(entry, dict):
-      if str(entry.get('ticker', '')).lower() == t:
+      if str(entry.get('ticker', '')).lower() == ticker:
         total += int(entry.get('quantity', 0))
-    elif str(entry).lower() == t:
+    elif str(entry).lower() == ticker:
       total += 1
   return total
-
 
 def to_quantity(value, portfolio=None, ticker=None) -> int:
   """
@@ -87,7 +65,6 @@ def to_quantity(value, portfolio=None, ticker=None) -> int:
       return default_quantity()
   return default_quantity()
 
-
 def to_price(value, ticker) -> float:
   """
   Normalizes an LLM-provided price into a float.
@@ -105,7 +82,7 @@ def to_price(value, ticker) -> float:
   return get_stock_price(ticker)
 
 
-def init_balance(amount: float = 2000.0):
+def init_balance(amount: float = STARTING_BALANCE):
   """
   Resets the account to a known starting amount before each run.
   """
@@ -122,7 +99,6 @@ def read_balance() -> float:
     fcntl.flock(f, fcntl.LOCK_SH)
     return float(f.read())
 
-
 def update_balance(amount: float):
   """
   Overwrites the shared balance file with the given amount.
@@ -132,7 +108,9 @@ def update_balance(amount: float):
     f.seek(0)
     f.truncate()
     f.write(str(amount))
-
+    
+### END HELPER FUNCTIONS ###
+### BEGIN WORKER TASKS ###
 
 @worker_task("get_stock_price")
 def get_stock_price(ticker: str) -> float:
@@ -140,7 +118,6 @@ def get_stock_price(ticker: str) -> float:
   Returns a random mock quote for the given symbol.
   """
   return float(random.randrange(90, 120, 1))
-
 
 @worker_task("buy_stock")
 def buy_stock(ticker: str, quantity: int, price: float) -> str:
@@ -163,7 +140,6 @@ def buy_stock(ticker: str, quantity: int, price: float) -> str:
   log(f'Bought {ticker} and we now have {current_balance}')
   return "OK"
 
-
 @worker_task("sell_stock")
 def sell_stock(ticker: str, quantity: int, price: float, portfolio: List[dict]) -> str:
   """
@@ -172,16 +148,15 @@ def sell_stock(ticker: str, quantity: int, price: float, portfolio: List[dict]) 
   "all" sells the entire held position. Note: does not verify the ticker is
   actually held, so an over-zealous decider can sell repeatedly.
   """
-  q = to_quantity(quantity, portfolio, ticker)
+  quantity = to_quantity(quantity, portfolio, ticker)
   price = to_price(price, ticker)
-  log(f'Selling {q} shares of {ticker} at {price} each.')
-  amount = price * q
+  log(f'Selling {quantity} shares of {ticker} at {price} each.')
+  amount = price * quantity
   current_balance = read_balance()
   current_balance = current_balance + amount
   update_balance(current_balance)
   log(f'Sold {ticker} and we now have {current_balance}')
   return "OK"
-
 
 @worker_task("update_portfolio")
 def update_portfolio(ticker: str, quantity: int, price: float, portfolio: List[dict]) -> List[dict]:
@@ -191,8 +166,8 @@ def update_portfolio(ticker: str, quantity: int, price: float, portfolio: List[d
   Tracks the weighted-average purchase price per share in `avg_price`, and
   returns the updated list of {ticker, quantity, avg_price} holdings.
   """
-  shares = to_quantity(quantity)
-  target = str(ticker).lower()
+  quantity = to_quantity(quantity)
+  ticker = str(ticker).lower()
   share_price = to_price(price, ticker)
   updated = []
   added = False
@@ -203,18 +178,17 @@ def update_portfolio(ticker: str, quantity: int, price: float, portfolio: List[d
     else:
       entry_ticker = str(entry).lower()
       new_entry = {'ticker': entry, 'quantity': 0}
-    if entry_ticker == target:
+    if entry_ticker == ticker:
       held_shares = int(new_entry.get('quantity', 0))
       held_price = float(new_entry.get('avg_price', share_price))
-      total_shares = held_shares + shares
+      total_shares = held_shares + quantity
       new_entry['quantity'] = total_shares
-      new_entry['avg_price'] = round((held_shares * held_price + shares * share_price) / total_shares, 2)
+      new_entry['avg_price'] = round((held_shares * held_price + quantity * share_price) / total_shares, 2)
       added = True
     updated.append(new_entry)
   if not added:
-    updated.append({'ticker': ticker, 'quantity': shares, 'avg_price': share_price})
+    updated.append({'ticker': ticker, 'quantity': quantity, 'avg_price': share_price})
   return updated
-
 
 @worker_task("remove_from_portfolio")
 def remove_from_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> List[dict]:
@@ -225,8 +199,8 @@ def remove_from_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> 
   Partial sells keep the tracked avg_price so the remaining shares retain
   their original cost basis.
   """
-  q = to_quantity(quantity, portfolio, ticker)
-  t = str(ticker).lower()
+  quantity = to_quantity(quantity, portfolio, ticker)
+  ticker = str(ticker).lower()
   out = []
   for entry in portfolio or []:
     if isinstance(entry, dict):
@@ -235,8 +209,8 @@ def remove_from_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> 
     else:
       name = str(entry).lower()
       new_entry = {'ticker': entry, 'quantity': 0}
-    if name == t:
-      new_entry['quantity'] = int(new_entry.get('quantity', 0)) - q
+    if name == ticker:
+      new_entry['quantity'] = int(new_entry.get('quantity', 0)) - quantity
       if new_entry['quantity'] <= 0:
         continue
     out.append(new_entry)
@@ -260,3 +234,5 @@ def transfer_money(amount: float) -> float:
   current_balance = current_balance + amount
   update_balance(current_balance)
   return current_balance
+
+### END WORKER TASKS ###

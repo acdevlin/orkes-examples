@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
+from config import AI_MODEL_NAME, AI_PROVIDER, PROMPT_DESCRIPTIONS, PROMPT_NAMES
 
 # Executor prompt: given the current "instructions" (a user ask or the
 # decider's plan), picks one of the tool commands and returns it as
@@ -86,9 +87,6 @@ You must always provide the next action to execute, including the required detai
 You do not need to provide the reason for the action, just provide the action and required details to execute the action
 """
 
-ai_provider = "OpenAI_Key"
-ai_model_name = "gpt-4o-mini"
-
 def configure_integrations(api_config: Configuration):
   """
   Saves both prompt templates to the Orkes account.
@@ -96,18 +94,18 @@ def configure_integrations(api_config: Configuration):
   Lets the LLM tasks pick up prompt changes on the next run. Idempotent, so
   it's safe to call on every run.
   """
-  models = [f'{ai_provider}:{ai_model_name}']
+  models = [f'{AI_PROVIDER}:{AI_MODEL_NAME}']
 
   prompt_client = OrkesPromptClient(configuration=api_config)
 
   prompt_client.save_prompt(
-    prompt_name='stock_agent_instructions',
-    description='Trading agent instructions',
+    prompt_name=PROMPT_NAMES['instructions'],
+    description=PROMPT_DESCRIPTIONS['instructions'],
     prompt_template=stock_agent_instructions,
     models=models)
 
   prompt_client.save_prompt(
-    prompt_name='stock_agent_decider',
-    description='Trading agent decision prompt',
+    prompt_name=PROMPT_NAMES['decider'],
+    description=PROMPT_DESCRIPTIONS['decider'],
     prompt_template=stock_agent_decider,
     models=models)
