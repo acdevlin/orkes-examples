@@ -139,6 +139,111 @@ def stop_handler(task_handler, signum, frame):
   task_handler.stop_processes()
   sys.exit(0)
 
+
+def parse_args():
+  """
+  Parses CLI arguments for the trader app.
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--verbose', action='store_true', default=False,
+                      help='Print the detailed workflow instructions executed during the run')
+  return parser.parse_args()
+
+
+def build_api_config():
+  """
+  Creates and configures the Conductor API client configuration.
+  """
+  api_config = Configuration()
+  api_config.apply_logging_config(level=logging.INFO)
+  return api_config
+
+def create_clients(api_config):
+  """
+  Creates the workflow and metadata clients used by the app.
+  """
+  clients = OrkesClients(configuration=api_config)
+  return clients.get_workflow_client(), clients.get_metadata_client()
+
+def register_signal_handlers(task_handler):
+  """
+  Registers graceful shutdown handlers for the worker processes.
+  """
+  for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+    signal.signal(sig, lambda s, f: stop_handler(task_handler, s, f))
+
+def build_start_workflow_request():
+  """
+  Builds the workflow start request used for the trader run.
+  """
+  return StartWorkflowRequest(name=WORKFLOW_NAME, version=WORKFLOW_VERSION, input={
+      'instructions': WORKFLOW_INPUT_INSTRUCTIONS
+  })
+
+def run_workflow(workflow_client, request):
+  """
+  Starts the workflow, polls it until completion, and collects instructions.
+  """
+  workflow = None
+  seen = set()
+  offset = 0
+  wf_instructions = []
+
+  try:
+    workflow_id = workflow_client.start_workflow(start_workflow_request=request)
+    workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
+    print(f'track the agent execution here {os.getenv("CONDUCTOR_SERVER_URL")}/../execution/{workflow.workflow_id}')
+    while workflow.is_running():
+      offset = drain_log(offset)
+      print_new_plans(workflow, seen)
+      print_new_actions(workflow, seen)
+      workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
+      instructions = workflow.variables.get('instructions') if workflow and workflow.variables else None
+      if instructions is not None:
+        wf_instructions.append(instructions)
+      time.sleep(5)
+    offset = drain_log(offset)
+  except Exception as e:
+    print(f'Error starting workflow: {e}')
+    
+  return workflow, wf_instructions
+
+
+def initialize_runtime(api_config, metadata_client):
+  """
+  Initializes the runtime state for a trader run.
+  """
+  init_balance(amount=STARTING_BALANCE)
+  clear_log()
+  task_handler = start_workers(api_config=api_config)
+  register_signal_handlers(task_handler)
+
+  # Re-saves the prompt templates to the Orkes account each run so prompt
+  # changes in prompts.py take effect. This is idempotent.
+  configure_integrations(api_config=api_config)
+  add_agentic_workflow(metadata_client=metadata_client)
+  return task_handler
+
+def print_final_summary(starting_balance, holdings, wf_instructions, verbose):
+  """
+  Prints the final balance, portfolio summary, and optionally the workflow instructions.
+  """
+  final_balance = read_balance()
+  change = final_balance - starting_balance
+
+  print('Completed.')
+  print(f'Starting balance: ${starting_balance:.2f}')
+  print(f'Final balance: ${final_balance:.2f}')
+  print(f'Net cash gain/loss: ${change:.2f}')
+  print_holdings_summary(holdings)
+
+  if verbose:
+    print('='*50 + '\n\n')
+    print('Workflow executed the following instructions:')
+    for i, instruction in enumerate(wf_instructions):
+      print(f'Iteration {i+1}: {instruction}')
+      print('-'*50)
+
 ### END HELPER FUNCTIONS ###
 
 def main():
@@ -148,73 +253,19 @@ def main():
   Resets the account, starts the workers, re-saves the prompts, registers the
   workflow, and starts it, polling until the workflow finishes.
   """
-  parser = argparse.ArgumentParser()
-  parser.add_argument('--verbose', action='store_true', default=False, help='Print the detailed workflow instructions executed during the run')
-  args = parser.parse_args()
+  args = parse_args()
 
-  api_config = Configuration()
-  api_config.apply_logging_config(level=logging.INFO)
-  clients = OrkesClients(configuration=api_config)
-  workflow_client = clients.get_workflow_client()
-  metadata_client = clients.get_metadata_client()
+  api_config = build_api_config()
+  workflow_client, metadata_client = create_clients(api_config)
 
-  init_balance(amount=STARTING_BALANCE)
-  clear_log()
-  task_handler = start_workers(api_config=api_config)
+  task_handler = initialize_runtime(api_config, metadata_client)
 
-  # Kills child processes gracefully regardless of how script is terminated
-  for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-    signal.signal(sig, lambda s, f: stop_handler(task_handler, s, f))
+  request = build_start_workflow_request()
+  workflow, wf_instructions = run_workflow(workflow_client, request)
 
-  # Re-saves the prompt templates to the Orkes account each run so prompt
-  # changes in prompts.py take effect. This is idempotent.
-  configure_integrations(api_config=api_config)
-  add_agentic_workflow(metadata_client=metadata_client)
-
-  request = StartWorkflowRequest(name=WORKFLOW_NAME, version=WORKFLOW_VERSION, input={
-      'instructions': WORKFLOW_INPUT_INSTRUCTIONS
-  })
-
-  workflow = None
-  seen = set()
-  offset = 0
-  wf_instructions = []
-    
-  try:
-    workflow_id = workflow_client.start_workflow(start_workflow_request=request)
-    workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
-    print(f'track the agent execution here {os.getenv("CONDUCTOR_SERVER_URL")}/../execution/{workflow.workflow_id}')
-    while workflow.is_running():
-      # The decider's plan and the executor's action are both tagged with
-      # their loop iteration, so the output reads as a clear timeline even
-      # though the workflow iterates faster than the 5s poll interval.
-      offset = drain_log(offset)
-      print_new_plans(workflow, seen)
-      print_new_actions(workflow, seen)
-      workflow = workflow_client.get_workflow(workflow_id=workflow_id, include_tasks=True)
-      wf_instructions.append(workflow.variables["instructions"])
-      time.sleep(5)
-    offset = drain_log(offset)
-  except Exception as e:
-    print(f'Error starting workflow: {e}')
-      
   holdings = workflow.variables.get('portfolio', []) if workflow else []
-  final_balance = read_balance()
-  change = final_balance - STARTING_BALANCE
-    
-  # Final output summary of the run.
-  print('Completed.')
-  print(f'Starting balance: ${STARTING_BALANCE:.2f}')
-  print(f'Final balance: ${final_balance:.2f}')
-  print(f'Net cash gain/loss: ${change:.2f}')
-  print_holdings_summary(holdings)
-  if args.verbose:
-    print('='*50 + '\n\n')
-    print('Workflow executed the following instructions:')
-    for i, instruction in enumerate(wf_instructions):
-      print(f'Iteration {i+1}: {instruction}')
-      print('-'*50)
-    
+  print_final_summary(STARTING_BALANCE, holdings, wf_instructions, args.verbose)
+
   task_handler.stop_processes()
 
 
