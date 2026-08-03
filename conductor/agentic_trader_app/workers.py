@@ -216,14 +216,12 @@ def remove_from_portfolio(ticker: str, quantity: int, portfolio: List[dict]) -> 
     out.append(new_entry)
   return out
 
-
 @worker_task("check_account_balance")
 def check_account_balance() -> float:
   """
   Returns the current account balance.
   """
   return read_balance()
-
 
 @worker_task("transfer_money")
 def transfer_money(amount: float) -> float:
