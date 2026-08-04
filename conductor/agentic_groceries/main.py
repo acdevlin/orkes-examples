@@ -39,15 +39,16 @@ def upload_meal_planner_workflow(api_config):
 
 def main():
   parser = argparse.ArgumentParser(
-      description="Run the shopping list agent. "
-      "Default: deploy and run a single prompt locally, then exit. "
-      "Use --server to deploy and keep a long-lived worker polling for tool tasks."
+      description="""
+        Run the meal and grocery planner agentic workflow.
+        Default: deploy all artifacts to Orkes Conductor, run the workflow locally once, then exit. 
+      """
   )
   parser.add_argument(
       "--server",
       action="store_true",
       default=False,
-      help="Deploy the agent and keep a long-lived worker polling for tool tasks.",
+      help="Serve to Orkes Conductor and keep a long-lived worker polling for tool tasks.",
   )
   args = parser.parse_args()
 
