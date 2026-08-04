@@ -21,6 +21,7 @@ from settings import (
   MAX_TURNS, 
   SERVER_MODELS
 )
+from shared_utils import ensure_prompt
 
 @tool
 def add_item(item: str, context: ToolContext = None) -> dict:
@@ -67,38 +68,6 @@ def clear_list(context: ToolContext = None) -> dict:
     return {"status": "cleared"}
 
 
-def ensure_prompt(prompt_client: OrkesPromptClient):
-    """Sync the shopping list prompt template to the server. Always overwrites
-    the server template with the local text, so prompts.py is authoritative.
-
-    Args:
-        prompt_client: Client for saving/reading prompt templates.
-
-    Returns:
-        None.
-
-    Raises:
-        RuntimeError: If the prompt template cannot be saved or read back.
-    """
-    try:
-        prompt_client.save_prompt(
-            prompt_name=SHOPPING_LIST_PROMPT_NAME,
-            description=SHOPPING_LIST_PROMPT_DESCRIPTION,
-            prompt_template=SHOPPING_LIST_PROMPT_TEXT,
-            models=SERVER_MODELS)
-    except Exception as err:
-        raise RuntimeError(
-            f"Prompt template '{SHOPPING_LIST_PROMPT_NAME}' could not be saved. "
-            "Confirm CONDUCTOR_SERVER_URL and your auth key/secret are correct."
-            f"Full error: {err}"
-        ) from err
-    if prompt_client.get_prompt(SHOPPING_LIST_PROMPT_NAME) is None:
-        raise RuntimeError(
-            f"Prompt template '{SHOPPING_LIST_PROMPT_NAME}' was saved but could not be read back. "
-            "This likely indicates a server-side permissions or propagation issue."
-        )
-
-
 def create_shopping_list_agent(prompt_client: OrkesPromptClient) -> Agent:
     """Build the shopping list agent using the server-side prompt template.
 
@@ -108,11 +77,16 @@ def create_shopping_list_agent(prompt_client: OrkesPromptClient) -> Agent:
     Returns:
         Agent configured with the shopping list tools and instructions.
     """
-    ensure_prompt(prompt_client)
+    prompt = ensure_prompt(
+        prompt_client,
+        SHOPPING_LIST_PROMPT_NAME,
+        SHOPPING_LIST_PROMPT_DESCRIPTION,
+        SHOPPING_LIST_PROMPT_TEXT,
+        SERVER_MODELS,
+    )
     # Pass the template text as a string since the server won't resolve
     # PromptTemplate references into the model's system prompt.
-    prompt = prompt_client.get_prompt(SHOPPING_LIST_PROMPT_NAME)
-    instructions = (prompt.template if prompt is not None else "") or SHOPPING_LIST_PROMPT_TEXT
+    instructions = prompt.template or SHOPPING_LIST_PROMPT_TEXT
     return Agent(
         name="shopping_list_agent",
         model=SDK_MODEL,
