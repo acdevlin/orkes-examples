@@ -20,6 +20,7 @@ from conductor.ai.agents.tool import ToolContext
 from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
+import argparse
 import os
 
 # Required import to avoid pickling error from @tool in the current SDK.
@@ -108,6 +109,19 @@ agent = Agent(
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Run the shopping list agent. "
+        "Default: deploy and run a single prompt locally, then exit. "
+        "Use --server to deploy and keep a long-lived worker polling for tool tasks."
+    )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        default=False,
+        help="Deploy the agent and keep a long-lived worker polling for tool tasks.",
+    )
+    args = parser.parse_args()
+
     api_config = Configuration()
     # Save prompts to Orkes for future runs
     prompt_client = OrkesPromptClient(configuration=api_config)
@@ -125,13 +139,17 @@ if __name__ == "__main__":
             server_url=server_url,
             auth_key=os.environ.get("CONDUCTOR_AUTH_KEY", None),
             auth_secret=os.environ.get("CONDUCTOR_AUTH_SECRET", None),
+            worker_poll_interval_ms=100,  # 100ms poll interval, for ALL tools registered with this runtime
         )
     )
 
     with runtime:
         runtime.deploy(agent)
-        result = runtime.run(
-            agent,
-            "Add milk, eggs, and bread to my shopping list, then show me the list.",
-        )
-        result.print_result()
+        if args.server:
+            runtime.serve(agent)
+        else:
+            result = runtime.run(
+                agent,
+                "Add milk, eggs, and bread to my shopping list, then show me the list.",
+            )
+            result.print_result()
