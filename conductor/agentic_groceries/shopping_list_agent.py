@@ -1,57 +1,58 @@
 """
-Originally forked from https://github.com/conductor-oss/python-sdk/blob/main/examples/agents/51_shared_state.py
-
-Shared State — tools sharing state across calls via ToolContext.
-
-Tools can read and write to ``context.state``, a dictionary that persists
-across all tool calls within the same agent execution. This enables
-tools to accumulate data, maintain counters, or pass information between
-different tool invocations without relying on the LLM to relay state.
+Creates an Orkes Conductor agent that manages a shared shopping list.
+Uses tools that share state across calls via ToolContext.
 
 Requirements:
-    - CONDUCTOR_SERVER_URL=https://developer.orkescloud.com/api as an environment variable
     - CONDUCTOR_AUTH_KEY and CONDUCTOR_AUTH_SECRET as environment variables
-    - CONDUCTOR_AGENT_LLM_MODEL=openai/gpt-4o-mini as an environment
+    - CONDUCTOR_AGENT_SDK_MODEL=openai/gpt-4o-mini as an environment
 """
 
-from conductor.ai.agents import Agent, AgentRuntime, tool
-from conductor.ai.agents.runtime.config import AgentConfig
+from conductor.ai.agents import Agent, tool
 from conductor.ai.agents.tool import ToolContext
-from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
-import argparse
-import os
+from prompts import (
+  SHOPPING_LIST_PROMPT_TEXT, 
+  SHOPPING_LIST_PROMPT_NAME, 
+  SHOPPING_LIST_PROMPT_DESCRIPTION 
+)
+from settings import (
+  SDK_MODEL,
+  MAX_TURNS, 
+  SERVER_MODELS
+)
 
-# Required import to avoid pickling error from @tool in the current SDK.
-# Should be resolved with this pull: https://github.com/conductor-oss/python-sdk/pull/414
-import multiprocessing
-multiprocessing.set_start_method("fork", force=True)
 
-# integration name for OpenAI, already saved in your Orkes account
-integration_name = "OpenAI_Key"
-# model name from LLM provider, already saved in your Orkes account     
-model_name = "gpt-4o-mini"
-# SDK agent format: integration/model
-llm_model = f"{integration_name}/{model_name}"
-# server prompt format: integration:model    
-models = [f"{integration_name}:{model_name}"]     
-server_url = "https://developer.orkescloud.com/api"
+def ensure_prompt(prompt_client: OrkesPromptClient):
+    """Sync the shopping list prompt template to the server. Always overwrites
+    the server template with the local text, so prompts.py is authoritative.
 
-SHOPPING_PROMPT = """
-    You help manage a shopping list. Use add_item to add items, 
-    get_list to view the list, and clear_list to reset it. 
-    
-    IMPORTANT: Always add all items first, then call get_list separately
-    in a follow-up step to verify the list contents. Never call get_list
-    in the same batch as add_item calls.
-    
-    After assembling the list of all items, provide an estimated total cost
-    based on average prices for each item in Santa Cruz, California, USA.
-    If the list is empty, do not provide a cost estimate.
-    If you are unsure of the cost, provide a reasonable estimate based on "typical" 
-    prices for each item near the approximate area of Santa Cruz, California, USA.
-"""
+    Args:
+        prompt_client: Client for saving/reading prompt templates.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: If the prompt template cannot be saved or read back.
+    """
+    try:
+        prompt_client.save_prompt(
+            prompt_name=SHOPPING_LIST_PROMPT_NAME,
+            description=SHOPPING_LIST_PROMPT_DESCRIPTION,
+            prompt_template=SHOPPING_LIST_PROMPT_TEXT,
+            models=SERVER_MODELS)
+    except Exception as err:
+        raise RuntimeError(
+            f"Prompt template '{SHOPPING_LIST_PROMPT_NAME}' could not be saved. "
+            "Confirm CONDUCTOR_SERVER_URL and your auth key/secret are correct."
+            f"Full error: {err}"
+        ) from err
+    if prompt_client.get_prompt(SHOPPING_LIST_PROMPT_NAME) is None:
+        raise RuntimeError(
+            f"Prompt template '{SHOPPING_LIST_PROMPT_NAME}' was saved but could not be read back. "
+            "This likely indicates a server-side permissions or propagation issue."
+        )
 
 
 @tool
@@ -99,57 +100,24 @@ def clear_list(context: ToolContext = None) -> dict:
     return {"status": "cleared"}
 
 
-agent = Agent(
-    name="shopping_list_agent",
-    model=llm_model,
-    instructions=SHOPPING_PROMPT,
-    tools=[add_item, get_list, clear_list],
-    max_turns=10,
-)
+def create_shopping_list_agent(prompt_client: OrkesPromptClient) -> Agent:
+    """Build the shopping list agent using the server-side prompt template.
 
+    Args:
+        prompt_client: Client for saving/reading prompt templates.
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run the shopping list agent. "
-        "Default: deploy and run a single prompt locally, then exit. "
-        "Use --server to deploy and keep a long-lived worker polling for tool tasks."
+    Returns:
+        Agent configured with the shopping list tools and instructions.
+    """
+    ensure_prompt(prompt_client)
+    # Pass the template text as a string since the server won't resolve
+    # PromptTemplate references into the model's system prompt.
+    prompt = prompt_client.get_prompt(SHOPPING_LIST_PROMPT_NAME)
+    instructions = (prompt.template if prompt is not None else "") or SHOPPING_LIST_PROMPT_TEXT
+    return Agent(
+        name="shopping_list_agent",
+        model=SDK_MODEL,
+        instructions=instructions,
+        tools=[add_item, get_list, clear_list],
+        max_turns=MAX_TURNS,
     )
-    parser.add_argument(
-        "--server",
-        action="store_true",
-        default=False,
-        help="Deploy the agent and keep a long-lived worker polling for tool tasks.",
-    )
-    args = parser.parse_args()
-
-    api_config = Configuration()
-    # Save prompts to Orkes for future runs
-    prompt_client = OrkesPromptClient(configuration=api_config)
-    prompt_client.save_prompt(
-        prompt_name="shopping_list_instructions",
-        description="Instructions for an agent-managed shopping list with shared state.",
-        prompt_template=SHOPPING_PROMPT,
-        models=models)
-
-    # AgentRuntime() reads AGENTSPAN_* env vars (default localhost), NOT the
-    # CONDUCTOR_* vars. Point it at the Orkes account so deploy() reaches the
-    # server, and use auth_key/auth_secret so a JWT is minted for X-Authorization.
-    runtime = AgentRuntime(
-        config=AgentConfig(
-            server_url=server_url,
-            auth_key=os.environ.get("CONDUCTOR_AUTH_KEY", None),
-            auth_secret=os.environ.get("CONDUCTOR_AUTH_SECRET", None),
-            worker_poll_interval_ms=100,  # 100ms poll interval, for ALL tools registered with this runtime
-        )
-    )
-
-    with runtime:
-        runtime.deploy(agent)
-        if args.server:
-            runtime.serve(agent)
-        else:
-            result = runtime.run(
-                agent,
-                "Add milk, eggs, and bread to my shopping list, then show me the list.",
-            )
-            result.print_result()
