@@ -6,7 +6,12 @@ Each agent defaults to running locally with a predetermined prompt contained in 
 
 ## Agent 1: Recipe Finder
 
+TBD
+
 ## Agent 2: Menu Planner
 
-## Agent 3: Shopping List 
+TBD
+
+## Agent 3: Shopping List
+
 Assembles a complete shopping list based on the menu provided by the previous agent, then provides an estimated cost for the items on the shopping list.
