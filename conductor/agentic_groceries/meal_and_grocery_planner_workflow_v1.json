@@ -1,0 +1,125 @@
+{
+  "createTime": 1785803284755,
+  "updateTime": 1785868458960,
+  "name": "Meal And Grocery Planner",
+  "description": "3 agents working together to find potential recipes that meet specified criteria (eg: dietary restrictions or ingredient contents), plans which ones to use for a menu over the next 14 days, then assembles a shopping list for these ",
+  "version": 1,
+  "tasks": [
+    {
+      "name": "agent",
+      "taskReferenceName": "agent_ref",
+      "inputParameters": {
+        "agentType": "conductor",
+        "agentUrl": "",
+        "text": "",
+        "pollIntervalSeconds": 1,
+        "name": "shopping_list_agent",
+        "prompt": "Create a new shopping list with the following items:\n\n- 1 lb of bacon\n- 500ml of milk (convert to Imperial units such as cups/quarts/gallons first)\n- 1 small wheel of extra sharp cheddar cheese\n- spam\n- 6 eggs\n- more spam\n- 3 16oz cans of Garbanzo beans\n\nThen show me the final list."
+      },
+      "type": "AGENT",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {
+        "agent": {
+          "schemaVersion": 1,
+          "agentType": "conductor",
+          "displayName": "shopping_list_agent",
+          "source": {
+            "name": "shopping_list_agent"
+          },
+          "resolved": true,
+          "conductor": {
+            "name": "shopping_list_agent",
+            "resolvedVersion": 1,
+            "framework": "conductor",
+            "normalization": "normalized",
+            "agentConfig": {
+              "name": "shopping_list_agent",
+              "model": "OpenAI_Key/gpt-4o-mini",
+              "instructions": "\n    You help manage a shopping list. Use add_item to add items, \n    get_list to view the list, and clear_list to reset it. \n    \n    IMPORTANT: Always add all items first, then call get_list separately\n    in a follow-up step to verify the list contents. Never call get_list\n    in the same batch as add_item calls.\n    \n    After verifying the list, summarize the items for the user and stop.\n",
+              "tools": [
+                {
+                  "name": "add_item",
+                  "description": "Add an item to the shared shopping list.\n\nArgs:\n    item: The item to add.\n    context: Injected tool context with shared state.\n\nReturns:\n    Dictionary confirming the addition.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "item": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["item"]
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "toolType": "worker",
+                  "approvalRequired": false,
+                  "stateful": false
+                },
+                {
+                  "name": "get_list",
+                  "description": "Get the current shopping list from shared state.\n\nArgs:\n    context: Injected tool context with shared state.\n\nReturns:\n    Dictionary with the current list.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "toolType": "worker",
+                  "approvalRequired": false,
+                  "stateful": false
+                },
+                {
+                  "name": "clear_list",
+                  "description": "Clear the shopping list.\n\nArgs:\n    context: Injected tool context with shared state.\n\nReturns:\n    Dictionary confirming the clear.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "toolType": "worker",
+                  "approvalRequired": false,
+                  "stateful": false
+                }
+              ],
+              "strategy": "handoff",
+              "maxTurns": 10,
+              "timeoutSeconds": 0,
+              "external": false
+            }
+          }
+        }
+      }
+    }
+  ],
+  "inputParameters": [],
+  "outputParameters": {},
+  "failureWorkflow": "",
+  "schemaVersion": 2,
+  "restartable": true,
+  "workflowStatusListenerEnabled": false,
+  "ownerEmail": "acdevlin42@gmail.com",
+  "timeoutPolicy": "ALERT_ONLY",
+  "timeoutSeconds": 0,
+  "variables": {},
+  "inputTemplate": {},
+  "enforceSchema": true,
+  "metadata": {},
+  "maskedFields": []
+}

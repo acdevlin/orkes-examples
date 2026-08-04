@@ -2,16 +2,39 @@ from conductor.ai.agents.runtime.config import AgentConfig
 from conductor.ai.agents import AgentRuntime
 from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
+from conductor.client.orkes_clients import OrkesClients
 
-from settings import CONDUCTOR_AUTH_SECRET, POLL_INTERVAL_MS, SERVER_URL, CONDUCTOR_AUTH_KEY
+from settings import (
+  CONDUCTOR_AUTH_SECRET, 
+  POLL_INTERVAL_MS, 
+  SERVER_URL, 
+  CONDUCTOR_AUTH_KEY,
+  WORKFLOW_FILE
+)
 from shopping_list_agent import create_shopping_list_agent
 
 import argparse
+import json
 
 # Required import to avoid pickling error from @tool in the current SDK.
 # Should be resolved with this pull: https://github.com/conductor-oss/python-sdk/pull/414
 import multiprocessing
 multiprocessing.set_start_method("fork", force=True)
+
+
+def upload_meal_planner_workflow(api_config):
+  """Registers the "Meal And Grocery Planner" as a Workflow on Orkes.
+
+  Args:
+      api_config: Conductor API client configuration.
+
+  Returns:
+      None.
+  """
+  with open(WORKFLOW_FILE, "r") as file:
+    data = json.load(file)
+  metadata_client = OrkesClients(configuration=api_config).get_metadata_client()
+  metadata_client.register_workflow_def(workflow_def=data, overwrite=True)
 
 
 def main():
@@ -29,12 +52,12 @@ def main():
   args = parser.parse_args()
 
   api_config = Configuration(server_api_url=SERVER_URL)
+  # Keep our Conductor workflow updated in Orkes
+  upload_meal_planner_workflow(api_config)
   # Ensure the shopping list prompt template exists on the server
   prompt_client = OrkesPromptClient(configuration=api_config)
 
-  # AgentRuntime() reads AGENTSPAN_* env vars (default localhost), NOT the
-  # CONDUCTOR_* vars. Point it at the Orkes account so deploy() reaches the
-  # server, and use auth_key/auth_secret so a JWT is minted for X-Authorization.
+  # Point the runtime at Orkes Conductor instead of the default localhost.
   runtime = AgentRuntime(
       config=AgentConfig(
           server_url=SERVER_URL,

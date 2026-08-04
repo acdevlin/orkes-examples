@@ -20,3 +20,6 @@ CONDUCTOR_AUTH_SECRET = os.environ.get("CONDUCTOR_AUTH_SECRET", None)
 MAX_TURNS = 10
 # Tool poll interval in milliseconds, used within an agentic runtime.
 POLL_INTERVAL_MS = 100
+
+# JSON file containing the overarching Conductor workflow for our agents.
+WORKFLOW_FILE = "meal_and_grocery_planner_workflow_v1.json"
