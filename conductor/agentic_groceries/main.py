@@ -50,6 +50,12 @@ def main():
       default=False,
       help="Serve to Orkes Conductor and keep a long-lived worker polling for tool tasks.",
   )
+  parser.add_argument(
+    "--deploy-only",
+    action="store_true",
+    default=False,
+    help="Deploy all artifacts to Orkes Conductor, then exit without running the workflow.",
+  )
   args = parser.parse_args()
 
   api_config = Configuration(server_api_url=SERVER_URL)
@@ -71,9 +77,14 @@ def main():
   with runtime:
       shopping_list_agent = create_shopping_list_agent(prompt_client)
       runtime.deploy(shopping_list_agent)
-      if args.server:
+      print("Deployment complete.")
+      if args.deploy_only:
+          print("Exiting after deployment, as requested.")
+      elif args.server:
+          print("Serving to Orkes Conductor. Press Ctrl+C to exit.")
           runtime.serve(shopping_list_agent)
       else:
+          print("Running the workflow once locally.")
           result = runtime.run(
               shopping_list_agent,
               ("Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
