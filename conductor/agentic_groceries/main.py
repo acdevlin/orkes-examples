@@ -11,7 +11,9 @@ from settings import (
   CONDUCTOR_AUTH_KEY,
   WORKFLOW_FILE
 )
+
 from shopping_list_agent import create_shopping_list_agent
+from recipe_finder_agent import create_recipe_finder_agent
 
 import argparse
 import json
@@ -75,22 +77,33 @@ def main():
   )
 
   with runtime:
-      shopping_list_agent = create_shopping_list_agent(prompt_client)
-      runtime.deploy(shopping_list_agent)
-      print("Deployment complete.")
-      if args.deploy_only:
-          print("Exiting after deployment, as requested.")
-      elif args.server:
-          print("Serving to Orkes Conductor. Press Ctrl+C to exit.")
-          runtime.serve(shopping_list_agent)
-      else:
-          print("Running the workflow once locally.")
-          result = runtime.run(
-              shopping_list_agent,
-              ("Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
-               "Then show me the list.",),
-          )
-          result.print_result()
+    # Create the agents
+    recipe_finder_agent = create_recipe_finder_agent(prompt_client)
+    shopping_list_agent = create_shopping_list_agent(prompt_client)
+    # Deploy the agents to Orkes Conductor
+    runtime.deploy(recipe_finder_agent)
+    runtime.deploy(shopping_list_agent)
+    print("Deployment complete.")
+    
+    if args.deploy_only:
+        print("Exiting after deployment, as requested.")
+    elif args.server:
+        print("Serving to Orkes Conductor. Press Ctrl+C to exit.")
+        runtime.serve(shopping_list_agent)
+    else:
+        print("Running the workflow once locally.")
+        recipe_finder_result = runtime.run(
+            recipe_finder_agent,
+            ("Find me some vegetarian recipes.",),
+        )
+        recipe_finder_result.print_result()
+        shopping_list_result = runtime.run(
+            shopping_list_agent,
+            ("Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
+              "Then show me the list.",),
+        )
+        shopping_list_result.print_result()
+
 
 if __name__ == "__main__":
   main()  
