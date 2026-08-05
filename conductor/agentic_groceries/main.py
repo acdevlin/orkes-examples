@@ -1,28 +1,22 @@
-from conductor.ai.agents.runtime.config import AgentConfig
-from conductor.ai.agents import AgentRuntime
-from conductor.client.configuration.configuration import Configuration
-from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
-from conductor.client.orkes_clients import OrkesClients
-
-from settings import (
-  CONDUCTOR_AUTH_SECRET, 
-  POLL_INTERVAL_MS, 
-  SERVER_URL, 
-  CONDUCTOR_AUTH_KEY,
-  WORKFLOW_FILE
-)
-
-from shopping_list_agent import create_shopping_list_agent
-from recipe_finder_agent import create_recipe_finder_agent, find_recipes
-from menu_planner_agent import create_menu_planner_agent
-import recipe_extractor   # noqa: F401  (registers the extract_recipes worker via @worker_task)
-
 import argparse
 import json
 
 # Required import to avoid pickling error from @tool in the current SDK.
 # Should be resolved with this pull: https://github.com/conductor-oss/python-sdk/pull/414
 import multiprocessing
+
+from conductor.ai.agents import AgentRuntime
+from conductor.ai.agents.runtime.config import AgentConfig
+from conductor.client.configuration.configuration import Configuration
+from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
+from conductor.client.orkes_clients import OrkesClients
+
+from menu_planner_agent import create_menu_planner_agent
+import recipe_extractor  # noqa: F401  (registers the extract_recipes worker via @worker_task)
+from recipe_finder_agent import create_recipe_finder_agent, find_recipes
+from settings import CONDUCTOR_AUTH_KEY, CONDUCTOR_AUTH_SECRET, POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
+from shopping_list_agent import create_shopping_list_agent
+
 multiprocessing.set_start_method("fork", force=True)
 
 
@@ -30,10 +24,10 @@ def upload_meal_planner_workflow(api_config):
   """Registers the "Meal And Grocery Planner" as a Workflow on Orkes.
 
   Args:
-      api_config: Conductor API client configuration.
+    api_config: Conductor API client configuration.
 
   Returns:
-      None.
+    None.
   """
   with open(WORKFLOW_FILE, "r") as file:
     data = json.load(file)
@@ -42,10 +36,16 @@ def upload_meal_planner_workflow(api_config):
 
 
 def main():
+  """Deploy all artifacts to Orkes Conductor, then either serve workers,
+  run the workflow locally once, or exit after deployment.
+
+  Returns:
+    None.
+  """
   parser = argparse.ArgumentParser(
       description="""
         Run the meal and grocery planner agentic workflow.
-        Default: deploy all artifacts to Orkes Conductor, run the workflow locally once, then exit. 
+        Default: deploy all artifacts to Orkes Conductor, run the workflow locally once, then exit.
       """
   )
   parser.add_argument(
@@ -55,10 +55,10 @@ def main():
       help="Serve to Orkes Conductor and keep a long-lived worker polling for tool tasks.",
   )
   parser.add_argument(
-    "--deploy-only",
-    action="store_true",
-    default=False,
-    help="Deploy all artifacts to Orkes Conductor, then exit without running the workflow.",
+      "--deploy-only",
+      action="store_true",
+      default=False,
+      help="Deploy all artifacts to Orkes Conductor, then exit without running the workflow.",
   )
   args = parser.parse_args()
 
@@ -88,7 +88,7 @@ def main():
     runtime.deploy(menu_planner_agent)
     runtime.deploy(shopping_list_agent)
     print("Deployment complete.")
-    
+
     if args.deploy_only:
         print("Exiting after deployment, as requested.")
     elif args.server:
@@ -96,7 +96,7 @@ def main():
         runtime.serve(recipe_finder_agent, menu_planner_agent, shopping_list_agent)
     else:
         print("Running the workflow once locally.")
-        
+
         # Find recipes based on user input.
         recipe_finder_result = runtime.run(
             recipe_finder_agent,
@@ -104,7 +104,7 @@ def main():
         )
         print("\n\nRecipe Finder Result:")
         recipe_finder_result.print_result()
-        
+
         # Read the recipes the recipe finder selected from its tool output.
         recipes = []
         for call in recipe_finder_result.tool_calls:
@@ -118,7 +118,7 @@ def main():
           print("No suitable recipes found. Exiting.")
           return
         recipes_text = json.dumps(recipes, indent=2)
-        
+
         # Use the JSONified recipes to generate a weekly menu plan for 2 people.
         menu_planner_result = runtime.run(
             menu_planner_agent,
@@ -127,10 +127,10 @@ def main():
         )
         print("\n\nMenu Planner Result:")
         menu_planner_result.print_result()
-        
+
         # In a real workflow run, there should be a human appoval for the meal plan
         # before generating the final shopping list of all ingredients.
-        
+
         # Read the required ingredients straight from the menu plan tool output.
         menu_ingredients = []
         for call in menu_planner_result.tool_calls:
@@ -152,7 +152,7 @@ def main():
             "Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
             "Then show me the list."
           )
-        
+
         # Generate the final shopping list.
         shopping_list_result = runtime.run(
             shopping_list_agent,
@@ -163,4 +163,4 @@ def main():
 
 
 if __name__ == "__main__":
-  main()  
+  main()

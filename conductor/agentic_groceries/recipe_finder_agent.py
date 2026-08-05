@@ -1,6 +1,7 @@
+from typing import Optional
+
 from conductor.ai.agents import Agent, tool
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
-from typing import Optional
 
 from prompts import (
   RECIPE_FINDER_PROMPT_TEXT,
@@ -192,15 +193,17 @@ def find_recipes(preferences: Optional[str] = None) -> dict:
   ):
     recipes = [r for r in recipes if r["vegetarian"]]
   return {"recipes": recipes}
-  
+
+
 def create_recipe_finder_agent(prompt_client: OrkesPromptClient) -> Agent:
-  """Creates an agent for finding recipes based on dietary preferences, palate, 
+  """Creates an agent for finding recipes based on dietary preferences, palate,
   or other specific requirements.
 
   Args:
-      prompt_client: An instance of OrkesPromptClient to manage prompts.
+    prompt_client: An instance of OrkesPromptClient to manage prompts.
+
   Returns:
-      An instance of Agent configured for recipe finding.
+    An instance of Agent configured for recipe finding.
   """
   # Ensure the prompt is registered with the Orkes Prompt Client
   prompt = ensure_prompt(

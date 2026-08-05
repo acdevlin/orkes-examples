@@ -7,6 +7,8 @@ Requirements:
     - CONDUCTOR_AGENT_SDK_MODEL=openai/gpt-4o-mini as an environment
 """
 
+from typing import Optional
+
 from conductor.ai.agents import Agent, tool
 from conductor.ai.agents.tool import ToolContext
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
@@ -25,7 +27,7 @@ from shared_utils import ensure_prompt
 
 
 @tool
-def add_item(item: str, context: ToolContext = None) -> dict:
+def add_item(item: str, context: Optional[ToolContext] = None) -> dict:
   """Add an item to the shared shopping list.
 
   Args:
@@ -42,7 +44,7 @@ def add_item(item: str, context: ToolContext = None) -> dict:
 
 
 @tool
-def get_list(context: ToolContext = None) -> dict:
+def get_list(context: Optional[ToolContext] = None) -> dict:
   """Get the current shopping list from shared state.
 
   Args:
@@ -56,7 +58,7 @@ def get_list(context: ToolContext = None) -> dict:
 
 
 @tool
-def clear_list(context: ToolContext = None) -> dict:
+def clear_list(context: Optional[ToolContext] = None) -> dict:
   """Clear the shopping list.
 
   Args:

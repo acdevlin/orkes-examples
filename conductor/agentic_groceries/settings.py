@@ -2,12 +2,12 @@ import os
 
 # Integration name for OpenAI, already saved in your Orkes account.
 INTEGRATION_NAME = "OpenAI_Key"
-# Model name from LLM provider, already saved in your Orkes account.    
+# Model name from LLM provider, already saved in your Orkes account.
 MODEL_NAME = "gpt-4o-mini"
 # SDK agent format: integration/model
 SDK_MODEL = f"{INTEGRATION_NAME}/{MODEL_NAME}"
 # Server prompt format: integration:model
-SERVER_MODELS = [f"{INTEGRATION_NAME}:{MODEL_NAME}"]     
+SERVER_MODELS = [f"{INTEGRATION_NAME}:{MODEL_NAME}"]
 # URL for the main Orkes server API.
 SERVER_URL = "https://developer.orkescloud.com/api"
 

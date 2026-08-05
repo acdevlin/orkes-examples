@@ -1,7 +1,8 @@
-from conductor.ai.agents import Agent, tool
-from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 from datetime import date, timedelta
 from typing import Optional
+
+from conductor.ai.agents import Agent, tool
+from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
 from prompts import (
   MENU_PLANNER_PROMPT_TEXT,
@@ -136,9 +137,10 @@ def create_menu_planner_agent(prompt_client: OrkesPromptClient) -> Agent:
   """Creates an agent that plans a weekly menu based on available recipes.
 
   Args:
-      prompt_client: An instance of OrkesPromptClient to manage prompts.
+    prompt_client: An instance of OrkesPromptClient to manage prompts.
+
   Returns:
-      An instance of Agent configured for menu planning.
+    An instance of Agent configured for menu planning.
   """
   # Ensure the prompt is registered with the Orkes Prompt Client
   prompt = ensure_prompt(
