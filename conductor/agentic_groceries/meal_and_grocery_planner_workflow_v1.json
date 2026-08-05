@@ -1,13 +1,190 @@
 {
   "createTime": 1785803284755,
-  "updateTime": 1785868458960,
+  "updateTime": 1785942704676,
   "name": "Meal And Grocery Planner",
   "description": "3 agents working together to find potential recipes that meet specified criteria (eg: dietary restrictions or ingredient contents), plans which ones to use for a menu over the next 14 days, then assembles a shopping list for these ",
   "version": 1,
   "tasks": [
     {
-      "name": "agent",
-      "taskReferenceName": "agent_ref",
+      "name": "recipe_finder_agent",
+      "taskReferenceName": "recipe_finder_agent_ref",
+      "inputParameters": {
+        "agentType": "conductor",
+        "agentUrl": "",
+        "text": "",
+        "pollIntervalSeconds": 1,
+        "name": "recipe_finder_agent",
+        "prompt": "Suggest some vegetarian recipes that my wife and I can prepare for our dinners."
+      },
+      "type": "AGENT",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {
+        "agent": {
+          "schemaVersion": 1,
+          "agentType": "conductor",
+          "displayName": "recipe_finder_agent",
+          "source": {
+            "name": "recipe_finder_agent"
+          },
+          "resolved": true,
+          "conductor": {
+            "name": "recipe_finder_agent",
+            "resolvedVersion": 1,
+            "framework": "conductor",
+            "normalization": "normalized",
+            "agentConfig": {
+              "name": "recipe_finder_agent",
+              "model": "OpenAI_Key/gpt-4o-mini",
+              "instructions": "\\n  You help find recipes based on dietary preferences, palate, or other requirements.\\n  Use the find_recipes tool to retrieve a list of recipes.\\n  Try to select a wide variety of different recipes to provide the user with options.\\n  \\n  IMPORTANT: Dietary preferences will be specified in the user input, and you must always\\n  pass them to find_recipes so the tool filters the results. If no dietary preferences are\\n  specified, you may call find_recipes without arguments and return a general list of recipes.\\n  \\n  After retrieving the recipes, summarize them for the user and stop.\\n",
+              "tools": [
+                {
+                  "name": "find_recipes",
+                  "description": "Find recipes based on provided dietary preference, palate, or other requirements.\n\nArgs:\n  preferences: Dietary preference (eg: \"vegetarian\") used to filter the results.\n\nReturns:\n  Dictionary with a list of recipes.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "preferences": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "toolType": "worker",
+                  "approvalRequired": false,
+                  "stateful": false
+                }
+              ],
+              "strategy": "handoff",
+              "maxTurns": 10,
+              "timeoutSeconds": 0,
+              "external": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "menu_planner_agent",
+      "taskReferenceName": "menu_planner_agent_ref",
+      "inputParameters": {
+        "agentType": "conductor",
+        "agentUrl": "",
+        "text": "",
+        "pollIntervalSeconds": 1,
+        "name": "menu_planner_agent",
+        "prompt": "Plan dinners for 2 people for the next 7 days using only these recipes: "
+      },
+      "type": "AGENT",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {
+        "agent": {
+          "schemaVersion": 1,
+          "agentType": "conductor",
+          "displayName": "menu_planner_agent",
+          "source": {
+            "name": "menu_planner_agent"
+          },
+          "resolved": true,
+          "conductor": {
+            "name": "menu_planner_agent",
+            "resolvedVersion": 1,
+            "framework": "conductor",
+            "normalization": "normalized",
+            "agentConfig": {
+              "name": "menu_planner_agent",
+              "model": "OpenAI_Key/gpt-4o-mini",
+              "instructions": "\\n  You help generate a weekly meal plan based on a list of provided recipes.\\n  Use the create_menu_plan tool to create a plan for the next 7 calendar days.\\n\\n  IMPORTANT: The user will provide the recipes as JSON. Pass the recipes to\\n  create_menu_plan exactly as given, without modifying, dropping, or renaming\\n  any recipe or ingredient. Do not include recipes that are not in the provided\\n  list. Your plan should involve a variety of recipes; no recipe should be\\n  repeated during the week. If the user provides fewer than 7 recipes, you may\\n  repeat them, but try to spread them out.\\n\\n  The tool scales ingredient quantities to the requested number of people and\\n  merges duplicate ingredients, so report the quantities from the tool result\\n  as-is.\\n\\n  After generating the plan, summarize it for the user and stop.\\n",
+              "tools": [
+                {
+                  "name": "create_menu_plan",
+                  "description": "Create a 7-day menu plan starting from today.\n\nEach person consumes one serving of a recipe per meal, so every planned\nmeal is sized to serve `people` servings. Ingredients are structured as\n{amount, unit, item} dicts with amounts per serving; quantities are scaled\nby people / servings and duplicate ingredients across the week are merged\ninto a single line. All three daily meals are planned by default, but only\nthe requested meal types are generated when given (eg: [\"dinner\"] for a\ndinner-only plan).\n\nArgs:\n  recipes: List of recipe dicts, each with name, ingredients (list of\n    {amount, unit, item} dicts), and servings.\n  people: Number of people to feed per meal.\n  meal_types: Meal types to plan; accepts a single type or a list of any\n    of [\"breakfast\", \"lunch\", \"dinner\"].\n\nReturns:\n  Dictionary with the 7-day menu plan, the required ingredients, and\n  total servings per recipe.\n\nRaises:\n  ValueError: If recipes is empty or people is less than 1.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "recipes": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "people": {
+                        "type": "integer"
+                      },
+                      "meal_types": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "required": [
+                      "recipes"
+                    ]
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "toolType": "worker",
+                  "approvalRequired": false,
+                  "stateful": false
+                }
+              ],
+              "strategy": "handoff",
+              "maxTurns": 10,
+              "timeoutSeconds": 0,
+              "external": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "human",
+      "taskReferenceName": "human_ref",
+      "inputParameters": {
+        "__humanTaskDefinition": {
+          "assignmentCompletionStrategy": "LEAVE_OPEN",
+          "assignments": [],
+          "displayName": "Approve Menu Contents"
+        }
+      },
+      "type": "HUMAN",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {}
+    },
+    {
+      "name": "shopping_list_agent",
+      "taskReferenceName": "shopping_list_agent_ref",
       "inputParameters": {
         "agentType": "conductor",
         "agentUrl": "",
@@ -57,7 +234,9 @@
                         "type": "string"
                       }
                     },
-                    "required": ["item"]
+                    "required": [
+                      "item"
+                    ]
                   },
                   "outputSchema": {
                     "type": "object",
