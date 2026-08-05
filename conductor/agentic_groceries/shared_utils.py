@@ -2,6 +2,7 @@
 Shared utilities across all agents.
 """
 
+from conductor.client.http.models.prompt_template import PromptTemplate
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
 
@@ -11,7 +12,7 @@ def ensure_prompt(
     description: str,
     prompt_template: str,
     models: list[str],
-) -> dict:
+) -> PromptTemplate:
     """Sync a prompt template to the server. Always overwrites the server
     template with the local text, so the source module is authoritative.
 
