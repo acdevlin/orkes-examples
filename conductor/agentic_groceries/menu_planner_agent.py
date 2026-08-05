@@ -17,18 +17,68 @@ from shared_utils import ensure_prompt
 
 DEFAULT_MEALS = ["breakfast", "lunch", "dinner"]
 
+_ABBREV = ("g", "kg", "ml", "oz", "lb")
+_IRREGULAR = {"tomato": "tomatoes", "strawberry": "strawberries"}
+
+
+def plural(word: str) -> str:
+  """Pluralize a simple countable noun.
+
+  Args:
+    word: Word to pluralize (eg: "cup" or "tomato").
+
+  Returns:
+    The plural form (eg: "cups" or "tomatoes").
+  """
+  if word in _IRREGULAR:
+    return _IRREGULAR[word]
+  if word.endswith(("s", "x", "ch", "sh")):
+    return word + "es"
+  return word + "s"
+
+
+def render_ingredient(amount: float, unit: str, item: str) -> str:
+  """Render a scaled ingredient as a single line.
+
+  Args:
+    amount: Quantity (already scaled).
+    unit: Unit of measure, or None for countable items (eg: "egg").
+    item: Ingredient name (eg: "flour" or "shredded cheese").
+
+  Returns:
+    A single ingredient line (eg: "2 cups of flour" or "3 eggs").
+  """
+  if abs(amount - round(amount)) < 1e-9:
+    qty = str(int(round(amount)))
+  else:
+    qty = f"{amount:.2f}".rstrip("0").rstrip(".")
+  if unit:
+    if unit in _ABBREV:
+      # Attached units (eg: "800g of steak") are never pluralized.
+      return f"{qty}{unit} of {item}"
+    return f"{qty} {unit if amount == 1 else plural(unit)} of {item}"
+  return f"{qty} {item if amount == 1 else plural(item)}"
+
 
 @tool
-def create_menu_plan(recipes: list, people: int = 1, meal_types: Optional[list] = None) -> dict:
+def create_menu_plan(
+  recipes: list,
+  people: int = 1,
+  meal_types: Optional[list] = None,
+) -> dict:
   """Create a 7-day menu plan starting from today.
 
   Each person consumes one serving of a recipe per meal, so every planned
-  meal is sized to serve `people` servings. All three daily meals are
-  planned by default, but only the requested meal types are generated when
-  given (eg: ["dinner"] for a dinner-only plan).
+  meal is sized to serve `people` servings. Ingredients are structured as
+  {amount, unit, item} dicts with amounts per serving; quantities are scaled
+  by people / servings and duplicate ingredients across the week are merged
+  into a single line. All three daily meals are planned by default, but only
+  the requested meal types are generated when given (eg: ["dinner"] for a
+  dinner-only plan).
 
   Args:
-    recipes: List of recipe dicts, each with name, ingredients, and servings.
+    recipes: List of recipe dicts, each with name, ingredients (list of
+      {amount, unit, item} dicts), and servings.
     people: Number of people to feed per meal.
     meal_types: Meal types to plan; accepts a single type or a list of any
       of ["breakfast", "lunch", "dinner"].
@@ -38,29 +88,29 @@ def create_menu_plan(recipes: list, people: int = 1, meal_types: Optional[list] 
     total servings per recipe.
 
   Raises:
-    ValueError: If recipes is empty, people is less than 1, or a meal type
-      is not one of ["breakfast", "lunch", "dinner"].
+    ValueError: If recipes is empty or people is less than 1.
   """
   if not recipes:
     raise ValueError("At least one recipe is required to create a menu plan.")
   if people < 1:
     raise ValueError("At least one person must be fed per meal.")
-  
+
   meals = meal_types or DEFAULT_MEALS
   if isinstance(meals, str):
     meals = [meals]
-    
+
   menu_plan = []
-  required_ingredients = []
   total_servings = {}
+  totals = {}
   slot = 0
-  seen = set()
 
   for i in range(7):
     current = date.today() + timedelta(days=i)
     for meal in meals:
       recipe = recipes[slot % len(recipes)]
       slot += 1
+      factor = people / recipe.get("servings", 1)
+      ingredients = [render_ingredient(ing["amount"] * factor, ing.get("unit"), ing["item"]) for ing in recipe["ingredients"]]
       menu_plan.append({
         "day": current.isoformat(),
         "weekday": current.strftime("%A"),
@@ -68,16 +118,17 @@ def create_menu_plan(recipes: list, people: int = 1, meal_types: Optional[list] 
         "recipe": recipe["name"],
         "servings_per_person": 1,
         "servings_needed": people,
-        "ingredients": recipe["ingredients"],
+        "ingredients": ingredients,
       })
       total_servings[recipe["name"]] = total_servings.get(recipe["name"], 0) + people
-      for ingredient in recipe["ingredients"]:
-        if ingredient not in seen:
-          seen.add(ingredient)
-          required_ingredients.append(ingredient)
+      for ing in recipe["ingredients"]:
+        key = (ing.get("unit"), ing["item"])
+        totals[key] = totals.get(key, 0.0) + ing["amount"] * factor
   return {
     "menu_plan": menu_plan,
-    "required_ingredients": required_ingredients,
+    "required_ingredients": [
+      render_ingredient(amount, key[0], key[1]) for key, amount in totals.items()
+    ],
     "total_servings": total_servings,
   }
 

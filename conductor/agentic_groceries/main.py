@@ -95,6 +95,8 @@ def main():
         runtime.serve(shopping_list_agent)
     else:
         print("Running the workflow once locally.")
+        
+        # Find recipes based on user input.
         recipe_finder_result = runtime.run(
             recipe_finder_agent,
             ("Find me some vegetarian recipes.",),
@@ -102,11 +104,21 @@ def main():
         print("\n\nRecipe Finder Result:")
         recipe_finder_result.print_result()
         
-        # Read the recipes from the recipe finder tool output.
-        recipes_text = "\n".join(
-          f"- {r['name']} (serves {r['servings']}): {', '.join(r['ingredients'])}"
-          for r in find_recipes()["recipes"][:4]
-        )
+        # Read the recipes the recipe finder selected from its tool output.
+        recipes = []
+        for call in recipe_finder_result.tool_calls:
+          result = call.get("result") or {}
+          if isinstance(result, dict) and isinstance(result.get("result"), dict):
+            result = result["result"]
+          if isinstance(result, dict) and result.get("recipes"):
+            recipes = result["recipes"]
+            break
+        if not recipes:
+          print("No suitable recipes found. Exiting.")
+          return
+        recipes_text = json.dumps(recipes, indent=2)
+        
+        # Use the JSONified recipes to generate a weekly menu plan for 2 people.
         menu_planner_result = runtime.run(
             menu_planner_agent,
             (f"Plan dinners for 2 people for the next 7 days "
@@ -114,6 +126,9 @@ def main():
         )
         print("\n\nMenu Planner Result:")
         menu_planner_result.print_result()
+        
+        # In a real workflow run, there should be a human appoval for the meal plan
+        # before generating the final shopping list of all ingredients.
         
         # Read the required ingredients straight from the menu plan tool output.
         menu_ingredients = []
@@ -136,6 +151,8 @@ def main():
             "Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
             "Then show me the list."
           )
+        
+        # Generate the final shopping list.
         shopping_list_result = runtime.run(
             shopping_list_agent,
             (shopping_prompt,),
