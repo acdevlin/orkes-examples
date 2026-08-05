@@ -15,6 +15,7 @@ from settings import (
 from shopping_list_agent import create_shopping_list_agent
 from recipe_finder_agent import create_recipe_finder_agent, find_recipes
 from menu_planner_agent import create_menu_planner_agent
+import recipe_extractor   # noqa: F401  (registers the extract_recipes worker via @worker_task)
 
 import argparse
 import json
@@ -92,7 +93,7 @@ def main():
         print("Exiting after deployment, as requested.")
     elif args.server:
         print("Serving to Orkes Conductor. Press Ctrl+C to exit.")
-        runtime.serve(shopping_list_agent)
+        runtime.serve(recipe_finder_agent, menu_planner_agent, shopping_list_agent)
     else:
         print("Running the workflow once locally.")
         
