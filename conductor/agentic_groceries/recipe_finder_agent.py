@@ -1,5 +1,4 @@
 from conductor.ai.agents import Agent, tool
-from conductor.ai.agents.tool import ToolContext
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
 from prompts import (
