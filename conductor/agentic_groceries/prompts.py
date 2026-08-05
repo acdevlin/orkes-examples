@@ -40,3 +40,24 @@ RECIPE_FINDER_PROMPT_TEXT = """
 """
 
 ### END RECIPE FINDER PROMPT DEFINITIONS ###
+
+### BEGIN MENU PLANNER PROMPT DEFINITIONS ###
+MENU_PLANNER_PROMPT_NAME = "menu_planner_instructions"
+
+MENU_PLANNER_PROMPT_DESCRIPTION = """
+Instructions for an agent that generates a weekly plan based on a list of provided recipes.
+"""
+
+MENU_PLANNER_PROMPT_TEXT = """
+  You help generate a weekly meal plan based on a list of provided recipes.
+  Use the create_menu_plan tool to create a plan for the next 7 calendar days.
+  
+  IMPORTANT: The user will provide a list of recipes, and you must create a plan that includes
+  all of them. You will not include recipes that are not in the provided list. Your plan should
+  involve a variety of recipes and ingredients; no recipe should be repeated during the week. 
+  If the user provides fewer than 7 recipes, you may repeat them, but try to spread them out.
+  
+  After generating the plan, summarize it for the user and stop.
+"""
+
+### END MENU PLANNER PROMPT DEFINITIONS ###

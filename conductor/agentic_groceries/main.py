@@ -13,7 +13,8 @@ from settings import (
 )
 
 from shopping_list_agent import create_shopping_list_agent
-from recipe_finder_agent import create_recipe_finder_agent
+from recipe_finder_agent import create_recipe_finder_agent, find_recipes
+from menu_planner_agent import create_menu_planner_agent
 
 import argparse
 import json
@@ -79,9 +80,11 @@ def main():
   with runtime:
     # Create the agents
     recipe_finder_agent = create_recipe_finder_agent(prompt_client)
+    menu_planner_agent = create_menu_planner_agent(prompt_client)
     shopping_list_agent = create_shopping_list_agent(prompt_client)
     # Deploy the agents to Orkes Conductor
     runtime.deploy(recipe_finder_agent)
+    runtime.deploy(menu_planner_agent)
     runtime.deploy(shopping_list_agent)
     print("Deployment complete.")
     
@@ -96,12 +99,48 @@ def main():
             recipe_finder_agent,
             ("Find me some vegetarian recipes.",),
         )
+        print("\n\nRecipe Finder Result:")
         recipe_finder_result.print_result()
+        
+        # Read the recipes from the recipe finder tool output.
+        recipes_text = "\n".join(
+          f"- {r['name']} (serves {r['servings']}): {', '.join(r['ingredients'])}"
+          for r in find_recipes()["recipes"][:4]
+        )
+        menu_planner_result = runtime.run(
+            menu_planner_agent,
+            (f"Plan dinners for 2 people for the next 7 days "
+             f"using only these recipes:\n{recipes_text}",),
+        )
+        print("\n\nMenu Planner Result:")
+        menu_planner_result.print_result()
+        
+        # Read the required ingredients straight from the menu plan tool output.
+        menu_ingredients = []
+        for call in menu_planner_result.tool_calls:
+          plan = call.get("result") or {}
+          if isinstance(plan, dict) and isinstance(plan.get("result"), dict):
+            plan = plan["result"]
+          if isinstance(plan, dict) and plan.get("required_ingredients"):
+            menu_ingredients = plan["required_ingredients"]
+            break
+        if menu_ingredients:
+          ingredients_text = "\n".join(f"- {ingredient}" for ingredient in menu_ingredients)
+          shopping_prompt = (
+            f"Add the following required ingredients to my shopping list:\n{ingredients_text}\n"
+            "Then show me the list."
+          )
+        else:
+          # Fallback if we didn't find any ingredients in the menu plan output.
+          shopping_prompt = (
+            "Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
+            "Then show me the list."
+          )
         shopping_list_result = runtime.run(
             shopping_list_agent,
-            ("Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
-              "Then show me the list.",),
+            (shopping_prompt,),
         )
+        print("\n\nShopping List Result:")
         shopping_list_result.print_result()
 
 
