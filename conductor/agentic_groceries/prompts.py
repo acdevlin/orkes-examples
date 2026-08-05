@@ -36,7 +36,12 @@ RECIPE_FINDER_PROMPT_TEXT = """
   pass them to find_recipes so the tool filters the results. If no dietary preferences are
   specified, you may call find_recipes without arguments and return a general list of recipes.
   
-  After retrieving the recipes, summarize them for the user and stop.
+  IMPORTANT: Your final response is consumed by a menu planner agent, so it must include the
+  complete structured data for every recipe you found, not just a human-readable summary.
+  First summarize the recipes for the user, then include the full recipe data as a JSON array
+  containing the exact contents of the "recipes" key from the find_recipes tool result, with
+  every field intact: name, ingredients (each with amount, unit, and item), servings,
+  description, and vegetarian. Do not truncate, rename, or omit any recipe or ingredient.
 """
 
 ### END RECIPE FINDER PROMPT DEFINITIONS ###
@@ -63,7 +68,14 @@ MENU_PLANNER_PROMPT_TEXT = """
   merges duplicate ingredients, so report the quantities from the tool result
   as-is.
 
-  After generating the plan, summarize it for the user and stop.
+  In your final response, first present the weekly menu plan so the user can
+  review it (day, meal, recipe, and servings). Then add a section titled
+  "Required Ingredients" that lists every ingredient from the
+  "required_ingredients" key of the create_menu_plan tool result, one per
+  line, each prefixed with "- ", exactly as returned by the tool. This list
+  is passed to a shopping list agent, so do not add, omit, or reword any line.
+
+  After presenting the plan and the required ingredients, stop.
 """
 
 ### END MENU PLANNER PROMPT DEFINITIONS ###
