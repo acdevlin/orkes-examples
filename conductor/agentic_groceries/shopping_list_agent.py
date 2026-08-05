@@ -4,7 +4,6 @@ Uses tools that share state across calls via ToolContext.
 
 Requirements:
     - CONDUCTOR_AUTH_KEY and CONDUCTOR_AUTH_SECRET as environment variables
-    - CONDUCTOR_AGENT_SDK_MODEL=openai/gpt-4o-mini as an environment
 """
 
 from typing import Optional

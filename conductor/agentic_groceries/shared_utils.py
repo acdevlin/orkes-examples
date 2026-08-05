@@ -38,7 +38,7 @@ def ensure_prompt(
   except Exception as err:
     raise RuntimeError(
       f"Prompt template '{prompt_name}' could not be saved. "
-      "Confirm CONDUCTOR_SERVER_URL and your auth key/secret are correct."
+      "Confirm SERVER_URL and your CONDUCTOR_AUTH_KEY/CONDUCTOR_AUTH_SECRET are correct. "
       f"Full error: {err}"
     ) from err
   prompt = prompt_client.get_prompt(prompt_name)
