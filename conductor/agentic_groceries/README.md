@@ -2,13 +2,14 @@
 
 This project creates a menu of dinners for the upcoming 7 days and an associated grocery list of ingredients to purchase in order to cook these meals. Running `main.py` deploys the agents and workflow to Orkes Conductor, then runs the workflow locally once by default.
 
-Agent prompts live in `prompts.py` and are synced to Orkes Conductor as prompt templates (the local text is the source of truth) by `ensure_prompt` in `shared_utils.py`.
+Agent prompts live in `prompts.py` and are synced to Orkes Conductor as prompt templates (the local text is the source of truth) by `ensure_prompt` in `shared_utils.py`. The prompts embedded in the workflow JSON files are also kept in sync: they are patched automatically from `prompts.py` on every deploy, and can be rewritten into the files on demand with `sync_prompts.py`.
 
 Commands:
 
 - `python main.py` — deploy agents, prompts, and the workflow, then run the workflow once locally.
 - `python main.py --server` — deploy, then serve local worker tasks polling Orkes Conductor. Keep this terminal running while running the workflow in the Orkes UI.
 - `python main.py --deploy-only` — deploy all artifacts, then exit without running the workflow.
+- `python sync_prompts.py` — rewrite the agent prompts embedded in the workflow JSON files from `prompts.py`.
 
 ## Workflow
 

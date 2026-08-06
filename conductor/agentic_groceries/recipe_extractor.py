@@ -10,9 +10,8 @@ import re
 from conductor.client.http.models.task_def import TaskDef
 from conductor.client.worker.worker_task import worker_task
 
+# Matches a markdown fenced code block, optionally tagged with "json".
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
-
-_DECODER = json.JSONDecoder()
 
 _TASK_DEF = TaskDef(
   name="extract_recipes",
@@ -20,31 +19,6 @@ _TASK_DEF = TaskDef(
   timeout_seconds=60,
   response_timeout_seconds=30,
 )
-
-
-def _scan_recipes(text: str):
-  """Return the first JSON array of dicts embedded in text, or None.
-
-  Args:
-    text: Arbitrary text that may embed a JSON array of recipe dicts.
-
-  Returns:
-    The first parsed array whose entries are dicts, or None when no such
-    array parses.
-  """
-  idx = text.find("[")
-  while idx >= 0:
-    try:
-      parsed, _ = _DECODER.raw_decode(text, idx)
-    except (json.JSONDecodeError, ValueError):
-      idx = text.find("[", idx + 1)
-      continue
-    if isinstance(parsed, list):
-      recipes = [r for r in parsed if isinstance(r, dict)]
-      if recipes:
-        return recipes
-    idx = text.find("[", idx + 1)
-  return None
 
 
 @worker_task(
@@ -56,6 +30,10 @@ def _scan_recipes(text: str):
 def extract_recipes(text: str) -> dict:
   """Extract the recipe JSON array from the recipe finder agent's text.
 
+  The recipe finder agent is prompted to end its response with a markdown
+  fenced code block tagged with "json" containing the recipe array, so this
+  worker parses and validates that block rather than scanning arbitrary prose.
+
   Args:
     text: The recipe finder agent's final response, which embeds the recipe
       data as a JSON array in a markdown code block.
@@ -64,15 +42,19 @@ def extract_recipes(text: str) -> dict:
     Dictionary with the extracted "recipes" list.
 
   Raises:
-    ValueError: If no parseable recipe array is found in the text.
+    ValueError: If no fenced block parses to a non-empty list of recipe dicts.
   """
   if not text:
     raise ValueError("No recipe data received from the recipe finder agent.")
   for match in _FENCE.finditer(text):
-    recipes = _scan_recipes(match.group(1).strip())
-    if recipes is not None:
+    try:
+      recipes = json.loads(match.group(1))
+    except (json.JSONDecodeError, ValueError):
+      continue
+    if (
+      isinstance(recipes, list)
+      and recipes
+      and all(isinstance(r, dict) for r in recipes)
+    ):
       return {"recipes": recipes}
-  recipes = _scan_recipes(text)
-  if recipes is not None:
-    return {"recipes": recipes}
-  raise ValueError("Could not find a recipe JSON array in the recipe finder output.")
+  raise ValueError("Could not find a valid recipe JSON array in the recipe finder output.")

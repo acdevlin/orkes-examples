@@ -38,10 +38,11 @@ specified, you may call find_recipes without arguments and return a general list
 
 IMPORTANT: Your final response is consumed by a menu planner agent, so it must include the
 complete structured data for every recipe you found, not just a human-readable summary.
-First summarize the recipes for the user, then include the full recipe data as a JSON array
-containing the exact contents of the "recipes" key from the find_recipes tool result, with
-every field intact: name, ingredients (each with amount, unit, and item), servings,
-description, and vegetarian. Do not truncate, rename, or omit any recipe or ingredient.
+First summarize the recipes for the user. Then, as the final part of your response, output a
+single markdown fenced code block tagged with "json" containing exactly the "recipes" array
+from the find_recipes tool result, with every field intact: name, ingredients (each with
+amount, unit, and item), servings, description, and vegetarian. The code block must contain
+nothing but the JSON array. Do not truncate, rename, or omit any recipe or ingredient.
 """
 
 ### END RECIPE FINDER PROMPT DEFINITIONS ###
