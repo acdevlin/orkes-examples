@@ -177,6 +177,45 @@
       }
     },
     {
+      "name": "human_menu_approval",
+      "taskReferenceName": "human_menu_approval_ref",
+      "inputParameters": {
+        "__humanTaskDefinition": {
+          "assignmentCompletionStrategy": "TERMINATE",
+          "assignments": [
+            {
+              "assignee": {
+                "user": "acdevlin42@gmail.com",
+                "userType": "CONDUCTOR_USER"
+              },
+              "slaMinutes": 1440
+            }
+          ],
+          "displayName": "Approve Menu Contents",
+          "userFormTemplate": {
+            "name": "Menu Approval",
+            "version": 1
+          }
+        },
+        "menu_plan": "${menu_planner_agent_ref.output.text}",
+        "approvalStatus": "",
+        "comments": ""
+      },
+      "type": "HUMAN",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {}
+    },
+    {
       "name": "format_menu_plan",
       "taskReferenceName": "format_menu_plan_ref",
       "inputParameters": {
