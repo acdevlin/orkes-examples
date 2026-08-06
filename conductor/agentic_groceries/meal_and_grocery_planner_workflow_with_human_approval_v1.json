@@ -320,7 +320,8 @@
   ],
   "inputParameters": ["query", "people_count"],
   "outputParameters": {
-    "shoppingList": "${shopping_list_agent_ref.output.output.context.shopping_list}"
+    
+    "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}"
   },
   "failureWorkflow": "",
   "schemaVersion": 2,
