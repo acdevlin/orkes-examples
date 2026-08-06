@@ -1,6 +1,6 @@
 {
-  "createTime": 0,
-  "updateTime": 1785975742664,
+  "createTime": 1785803284755,
+  "updateTime": 1785942704676,
   "name": "Meal And Grocery Planner",
   "description": "3 agents working together to find potential recipes that meet specified criteria (eg: dietary restrictions or ingredient contents), plan which ones to use for a menu over the next 7 days, then assemble a shopping list for these ingredients.",
   "version": 1,
@@ -156,9 +156,7 @@
                         "items": {}
                       }
                     },
-                    "required": [
-                      "recipes"
-                    ]
+                    "required": ["recipes"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -177,6 +175,45 @@
           }
         }
       }
+    },
+    {
+      "name": "human",
+      "taskReferenceName": "human_ref",
+      "inputParameters": {
+        "__humanTaskDefinition": {
+          "assignmentCompletionStrategy": "TERMINATE",
+          "assignments": [
+            {
+              "assignee": {
+                "user": "acdevlin42@gmail.com",
+                "userType": "CONDUCTOR_USER"
+              },
+              "slaMinutes": 1440
+            }
+          ],
+          "displayName": "Approve Menu Contents",
+          "userFormTemplate": {
+            "name": "Menu Approval",
+            "version": 1
+          }
+        },
+        "menu_plan": "${menu_planner_agent_ref.output.text}",
+        "approvalStatus": "",
+        "comments": ""
+      },
+      "type": "HUMAN",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {}
     },
     {
       "name": "shopping_list_agent",
@@ -230,9 +267,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "item"
-                    ]
+                    "required": ["item"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -283,13 +318,8 @@
       }
     }
   ],
-  "inputParameters": [
-    "query",
-    "people_count"
-  ],
-  "outputParameters": {
-    "shoppingList": "${shopping_list_agent_ref.output.context.shopping_list}"
-  },
+  "inputParameters": ["query", "people_count"],
+  "outputParameters": {},
   "failureWorkflow": "",
   "schemaVersion": 2,
   "restartable": true,
