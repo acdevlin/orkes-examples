@@ -9,6 +9,7 @@ import re
 
 from conductor.client.http.models.task_def import TaskDef
 from conductor.client.worker.worker_task import worker_task
+from conductor.client.automator.task_handler import get_registered_worker_names
 
 # Matches a markdown fenced code block, optionally tagged with "json".
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
@@ -58,3 +59,27 @@ def extract_recipes(text: str) -> dict:
     ):
       return {"recipes": recipes}
   raise ValueError("Could not find a valid recipe JSON array in the recipe finder output.")
+
+
+def ensure_extract_recipes_worker() -> None:
+  """Verify the extract_recipes worker is registered for polling.
+
+  The @worker_task decorator registers the worker in Conductor's global
+  decorated-function registry when this module is imported. This helper makes
+  that dependency explicit: it checks the registry and re-registers the worker
+  if the registration is missing, so a deployment self-heals instead of leaving
+  the workflow's extract_recipes task queued forever.
+
+  Args:
+    None.
+
+  Returns:
+    None.
+  """
+  if "extract_recipes" not in get_registered_worker_names():
+    worker_task(
+      task_definition_name="extract_recipes",
+      task_def=_TASK_DEF,
+      register_task_def=True,
+      overwrite_task_def=True,
+    )(extract_recipes)
