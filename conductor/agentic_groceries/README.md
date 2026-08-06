@@ -12,13 +12,14 @@ Commands:
 
 ## Workflow
 
-The "Meal And Grocery Planner" workflow runs five steps in order:
+The "Meal And Grocery Planner" workflow (`meal_and_grocery_planner_workflow_v1.json`) runs four steps in order:
 
-1. **Recipe Finder** (AGENT) — finds recipes matching the requested dietary preference via the `find_recipes` tool.
+1. **Recipe Finder** (AGENT) — finds recipes matching the `query` workflow input via the `find_recipes` tool.
 2. **Extract Recipes** (worker) — deterministically extracts the recipe JSON from the agent's output (`recipe_extractor.py`).
-3. **Menu Planner** (AGENT) — builds a 7-day menu plan via the `create_menu_plan` tool.
-4. **Human Approval** (HUMAN) — a "Menu Approval" form reviews the menu before the shopping list is built.
-5. **Shopping List** (AGENT) — adds all required ingredients to a shared shopping list and shows the final list.
+3. **Menu Planner** (AGENT) — builds a 7-day dinner menu for the `people_count` people via the `create_menu_plan` tool.
+4. **Shopping List** (AGENT) — adds all required ingredients to a shared shopping list and shows the final list.
+
+The workflow takes two inputs: `query` (the recipe request, eg: "vegetarian dinners") and `people_count` (how many people to plan dinners for).
 
 ## Agent 1: Recipe Finder
 
