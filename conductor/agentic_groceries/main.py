@@ -15,6 +15,7 @@ from menu_planner_agent import create_menu_planner_agent
 import recipe_extractor  # noqa: F401  (registers the extract_recipes worker via @worker_task)
 from recipe_finder_agent import create_recipe_finder_agent, find_recipes
 from settings import CONDUCTOR_AUTH_KEY, CONDUCTOR_AUTH_SECRET, POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
+from shared_utils import patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
 
 multiprocessing.set_start_method("fork", force=True)
@@ -31,6 +32,8 @@ def upload_meal_planner_workflow(api_config):
   """
   with open(WORKFLOW_FILE, "r") as file:
     data = json.load(file)
+  # Keep the workflow's embedded agent prompts in sync with prompts.py.
+  patch_workflow_prompts(data)
   metadata_client = OrkesClients(configuration=api_config).get_metadata_client()
   metadata_client.register_workflow_def(workflow_def=data, overwrite=True)
 

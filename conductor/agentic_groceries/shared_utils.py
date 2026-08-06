@@ -5,6 +5,38 @@ Shared utilities across all agents.
 from conductor.client.http.models.prompt_template import PromptTemplate
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
+from prompts import (
+  MENU_PLANNER_PROMPT_TEXT,
+  RECIPE_FINDER_PROMPT_TEXT,
+  SHOPPING_LIST_PROMPT_TEXT,
+)
+
+_AGENT_PROMPTS = {
+  "recipe_finder_agent": RECIPE_FINDER_PROMPT_TEXT,
+  "menu_planner_agent": MENU_PLANNER_PROMPT_TEXT,
+  "shopping_list_agent": SHOPPING_LIST_PROMPT_TEXT,
+}
+
+
+def patch_workflow_prompts(workflow: dict) -> dict:
+  """Overwrite each agent task's embedded instructions in a workflow def
+  with the current prompt text from prompts.py.
+
+  Args:
+    workflow: A Conductor workflow definition dict loaded from JSON.
+
+  Returns:
+    The same workflow dict with the agent instructions patched in place.
+  """
+  for task in workflow.get("tasks", []):
+    agent_config = task.get("metadata", {}).get("agent", {}).get("conductor", {}).get("agentConfig")
+    if agent_config is None:
+      continue
+    prompt = _AGENT_PROMPTS.get(task.get("name"))
+    if prompt is not None:
+      agent_config["instructions"] = prompt
+  return workflow
+
 
 def ensure_prompt(
   prompt_client: OrkesPromptClient,
