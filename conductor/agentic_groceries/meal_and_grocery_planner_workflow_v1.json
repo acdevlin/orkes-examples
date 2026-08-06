@@ -156,9 +156,7 @@
                         "items": {}
                       }
                     },
-                    "required": [
-                      "recipes"
-                    ]
+                    "required": ["recipes"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -230,9 +228,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "item"
-                    ]
+                    "required": ["item"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -283,12 +279,9 @@
       }
     }
   ],
-  "inputParameters": [
-    "query",
-    "people_count"
-  ],
+  "inputParameters": ["query", "people_count"],
   "outputParameters": {
-    "shoppingList": "${shopping_list_agent_ref.output.context.shopping_list}"
+    "shoppingList": "${shopping_list_agent_ref.output.output.context.shopping_list}"
   },
   "failureWorkflow": "",
   "schemaVersion": 2,
