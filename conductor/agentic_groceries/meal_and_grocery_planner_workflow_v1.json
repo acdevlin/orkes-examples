@@ -177,6 +177,26 @@
       }
     },
     {
+      "name": "format_menu_plan",
+      "taskReferenceName": "format_menu_plan_ref",
+      "inputParameters": {
+        "text": "${menu_planner_agent_ref.output.text}"
+      },
+      "type": "SIMPLE",
+      "decisionCases": {},
+      "defaultCase": [],
+      "forkTasks": [],
+      "startDelay": 0,
+      "joinOn": [],
+      "optional": false,
+      "defaultExclusiveJoinTask": [],
+      "asyncComplete": false,
+      "loopOver": [],
+      "onStateChange": {},
+      "permissive": false,
+      "metadata": {}
+    },
+    {
       "name": "shopping_list_agent",
       "taskReferenceName": "shopping_list_agent_ref",
       "inputParameters": {
@@ -281,7 +301,8 @@
   ],
   "inputParameters": ["query", "people_count"],
   "outputParameters": {
-    "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}",
+    "menu_plan": "${format_menu_plan_ref.output.result}",
+    "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}"
   },
   "failureWorkflow": "",
   "schemaVersion": 2,

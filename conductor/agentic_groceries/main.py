@@ -12,6 +12,7 @@ from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 from conductor.client.orkes_clients import OrkesClients
 
 from menu_planner_agent import create_menu_planner_agent
+from menu_plan_formatter import ensure_format_menu_plan_worker
 from recipe_extractor import ensure_extract_recipes_worker
 from recipe_finder_agent import create_recipe_finder_agent, find_recipes
 from settings import CONDUCTOR_AUTH_KEY, CONDUCTOR_AUTH_SECRET, POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
@@ -92,10 +93,12 @@ def main():
     runtime.deploy(shopping_list_agent)
     print("Deployment complete.")
 
-    # Register the extract_recipes SIMPLE worker so the workflow's
-    # extract_recipes task is polled while serving. The @worker_task decorator
-    # registers it at import time; this makes that dependency explicit.
+    # Register the SIMPLE workers so the workflow's extract_recipes and
+    # format_menu_plan tasks are polled while serving. The @worker_task
+    # decorators register them at import time; these calls make that
+    # dependency explicit.
     ensure_extract_recipes_worker()
+    ensure_format_menu_plan_worker()
 
     if args.deploy_only:
         print("Exiting after deployment, as requested.")
