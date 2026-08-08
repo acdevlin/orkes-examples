@@ -17,11 +17,9 @@ from menu_planner_agent import create_menu_planner_agent
 from menu_plan_formatter import ensure_format_menu_plan_worker
 from recipe_extractor import ensure_extract_recipes_worker
 from recipe_finder_agent import create_recipe_finder_agent, find_recipes
-from settings import CONDUCTOR_AUTH_KEY, CONDUCTOR_AUTH_SECRET, POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
+from settings import POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
 from shared_utils import patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
-
-#multiprocessing.set_start_method("fork", force=True)
 
 
 def relax_tool_response_timeouts():
@@ -99,10 +97,8 @@ def main():
 
   # Point the runtime at Orkes Conductor instead of the default localhost.
   runtime = AgentRuntime(
-      config=AgentConfig(
-          server_url=SERVER_URL,
-          auth_key=CONDUCTOR_AUTH_KEY,
-          auth_secret=CONDUCTOR_AUTH_SECRET,
+      configuration=api_config,
+      settings=AgentConfig(
           worker_poll_interval_ms=POLL_INTERVAL_MS,
       )
   )
