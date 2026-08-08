@@ -21,7 +21,7 @@ from settings import CONDUCTOR_AUTH_KEY, CONDUCTOR_AUTH_SECRET, POLL_INTERVAL_MS
 from shared_utils import patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
 
-multiprocessing.set_start_method("fork", force=True)
+#multiprocessing.set_start_method("fork", force=True)
 
 
 def relax_tool_response_timeouts():
