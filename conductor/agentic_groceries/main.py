@@ -5,6 +5,8 @@ import json
 # Should be resolved with this pull: https://github.com/conductor-oss/python-sdk/pull/414
 import multiprocessing
 
+import conductor.ai.agents.runtime.runtime as runtime_module
+
 from conductor.ai.agents import AgentRuntime
 from conductor.ai.agents.runtime.config import AgentConfig
 from conductor.client.configuration.configuration import Configuration
@@ -20,6 +22,25 @@ from shared_utils import patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
 
 multiprocessing.set_start_method("fork", force=True)
+
+
+def relax_tool_response_timeouts():
+  """Loosen the SDK's default worker response timeout for tool tasks.
+
+  The SDK's ``_default_task_def`` uses a 10s response_timeout_seconds. The
+  shopping list agent fires many parallel ``add_item`` tool calls in a single
+  turn (26 in the failing run). With the worker manager's default 10 threads,
+  queued tasks can sit past the 10s window and get marked ``TIMED_OUT``,
+  retried, and stall the agent. Override the default to a generous 120s;
+  lease-extend heartbeats keep long-running tasks alive.
+  """
+  original = runtime_module._default_task_def
+
+  def patched(name, **kwargs):
+    kwargs.setdefault("response_timeout_seconds", 120)
+    return original(name, **kwargs)
+
+  runtime_module._default_task_def = patched
 
 
 def upload_meal_planner_workflow(api_config):
@@ -65,6 +86,10 @@ def main():
       help="Deploy all artifacts to Orkes Conductor, then exit without running the workflow.",
   )
   args = parser.parse_args()
+
+  # Relax the SDK's 10s tool worker response timeout before anything is
+  # deployed/served, so parallel add_item calls have room to complete.
+  relax_tool_response_timeouts()
 
   api_config = Configuration(server_api_url=SERVER_URL)
   # Keep our Conductor workflow updated in Orkes
