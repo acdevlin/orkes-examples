@@ -15,10 +15,10 @@ from conductor.client.orkes_clients import OrkesClients
 
 from menu_planner_agent import create_menu_planner_agent
 from menu_plan_formatter import ensure_format_menu_plan_worker
-from recipe_extractor import ensure_extract_recipes_worker
-from recipe_finder_agent import create_recipe_finder_agent, find_recipes
+from recipe_extractor import ensure_extract_recipes_worker, extract_recipes
+from recipe_finder_agent import create_recipe_finder_agent
 from settings import POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
-from shared_utils import patch_human_approver, patch_workflow_prompts
+from shared_utils import extract_tool_output, patch_human_approver, patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
 
 
@@ -139,15 +139,9 @@ def main():
         print("\n\nRecipe Finder Result:")
         recipe_finder_result.print_result()
 
-        # Read the recipes the recipe finder selected from its tool output.
-        recipes = []
-        for call in recipe_finder_result.tool_calls:
-          result = call.get("result") or {}
-          if isinstance(result, dict) and isinstance(result.get("result"), dict):
-            result = result["result"]
-          if isinstance(result, dict) and result.get("recipes"):
-            recipes = result["recipes"]
-            break
+        # Extract the recipes from the finder's output text exactly like the
+        # workflow's extract_recipes task does.
+        recipes = extract_recipes(recipe_finder_result.output["result"])["recipes"]
         if not recipes:
           print("No suitable recipes found. Exiting.")
           return
@@ -168,14 +162,7 @@ def main():
         # before generating the final shopping list of all ingredients.
 
         # Read the required ingredients straight from the menu plan tool output.
-        menu_ingredients = []
-        for call in menu_planner_result.tool_calls:
-          plan = call.get("result") or {}
-          if isinstance(plan, dict) and isinstance(plan.get("result"), dict):
-            plan = plan["result"]
-          if isinstance(plan, dict) and plan.get("required_ingredients"):
-            menu_ingredients = plan["required_ingredients"]
-            break
+        menu_ingredients = extract_tool_output(menu_planner_result, "required_ingredients")
         if menu_ingredients:
           ingredients_text = "\n".join(f"- {ingredient}" for ingredient in menu_ingredients)
           shopping_prompt = (

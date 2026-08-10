@@ -19,6 +19,28 @@ _AGENT_PROMPTS = {
 }
 
 
+def extract_tool_output(result, key):
+  """Return the first value for `key` found across an agent result's tool calls.
+
+  Tool results are sometimes wrapped in a nested {"result": {...}} dict, so
+  both shapes are unwrapped before matching.
+
+  Args:
+    result: An AgentResult from a runtime.run() call.
+    key: Tool result key to extract (eg: "recipes" or "required_ingredients").
+
+  Returns:
+    The value for the key, or None if no tool call returned it.
+  """
+  for call in result.tool_calls:
+    out = call.get("result") or {}
+    if isinstance(out, dict) and isinstance(out.get("result"), dict):
+      out = out["result"]
+    if isinstance(out, dict) and out.get(key):
+      return out[key]
+  return None
+
+
 def patch_workflow_prompts(workflow: dict) -> dict:
   """Overwrite each agent task's embedded instructions in a workflow def
   with the current prompt text from prompts.py.
