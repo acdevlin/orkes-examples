@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 from conductor.ai.agents import Agent, tool
+from conductor.ai.agents.tool import ToolContext
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
 from prompts import (
@@ -66,6 +67,7 @@ def create_menu_plan(
   recipes: list,
   people: int = 1,
   meal_types: Optional[list] = None,
+  context: Optional[ToolContext] = None,
 ) -> dict:
   """Create a 7-day menu plan starting from today.
 
@@ -83,6 +85,9 @@ def create_menu_plan(
     people: Number of people to feed per meal.
     meal_types: Meal types to plan; accepts a single type or a list of any
       of ["breakfast", "lunch", "dinner"].
+    context: Injected tool context; the required ingredients are stored
+      under context.state["required_ingredients"] so the workflow can pass
+      them to the shopping list agent as structured data.
 
   Returns:
     Dictionary with the 7-day menu plan, the required ingredients, and
@@ -125,11 +130,14 @@ def create_menu_plan(
       for ing in recipe["ingredients"]:
         key = (ing.get("unit"), ing["item"])
         totals[key] = totals.get(key, 0.0) + ing["amount"] * factor
+  required_ingredients = [
+    render_ingredient(amount, key[0], key[1]) for key, amount in totals.items()
+  ]
+  if context is not None:
+    context.state["required_ingredients"] = required_ingredients
   return {
     "menu_plan": menu_plan,
-    "required_ingredients": [
-      render_ingredient(amount, key[0], key[1]) for key, amount in totals.items()
-    ],
+    "required_ingredients": required_ingredients,
     "total_servings": total_servings,
   }
 

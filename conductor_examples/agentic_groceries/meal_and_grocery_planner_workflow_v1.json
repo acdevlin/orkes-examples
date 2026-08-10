@@ -136,7 +136,7 @@
             "agentConfig": {
               "name": "menu_planner_agent",
               "model": "OpenAI_Key/gpt-4o-mini",
-              "instructions": "\nYou help generate a weekly meal plan based on a list of provided recipes.\nUse the create_menu_plan tool to create a plan for the next 7 calendar days.\n\nIMPORTANT: The user will provide the recipes as JSON. Pass the recipes to\ncreate_menu_plan exactly as given, without modifying, dropping, or renaming\nany recipe or ingredient. Do not include recipes that are not in the provided\nlist. Your plan should involve a variety of recipes; no recipe should be\nrepeated during the week. If the user provides fewer than 7 recipes, you may\nrepeat them, but try to spread them out.\n\nThe tool scales ingredient quantities to the requested number of people and\nmerges duplicate ingredients, so report the quantities from the tool result\nas-is.\n\nIn your final response, first present the weekly menu plan so the user can\nreview it (day, meal, recipe, and servings). Then add a section titled\n\"Required Ingredients\" that lists every ingredient from the\n\"required_ingredients\" key of the create_menu_plan tool result, one per\nline, each prefixed with \"- \", exactly as returned by the tool. This list\nis passed to a shopping list agent, so do not add, omit, or reword any line.\n\nAfter presenting the plan and the required ingredients, stop.\n",
+              "instructions": "\nYou help generate a weekly meal plan based on a list of provided recipes.\nUse the create_menu_plan tool to create a plan for the next 7 calendar days.\n\nIMPORTANT: The user will provide the recipes as JSON. Pass the recipes to\ncreate_menu_plan exactly as given, without modifying, dropping, or renaming\nany recipe or ingredient. Do not include recipes that are not in the provided\nlist. Your plan should involve a variety of recipes; no recipe should be\nrepeated during the week. If the user provides fewer than 7 recipes, you may\nrepeat them, but try to spread them out.\n\nThe tool scales ingredient quantities to the requested number of people and\nmerges duplicate ingredients, so report the quantities from the tool result\nas-is.\n\nIn your final response, first present the weekly menu plan so the user can\nreview it (day, meal, recipe, and servings). Then add a section titled\n\"Required Ingredients\" that lists every ingredient from the\n\"required_ingredients\" key of the create_menu_plan tool result, one per\nline, each prefixed with \"- \", exactly as returned by the tool, so the\nreviewer can see what will be purchased.\n\nAfter presenting the plan and the required ingredients, stop.\n",
               "tools": [
                 {
                   "name": "create_menu_plan",
@@ -156,7 +156,9 @@
                         "items": {}
                       }
                     },
-                    "required": ["recipes"]
+                    "required": [
+                      "recipes"
+                    ]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -244,7 +246,7 @@
         "text": "",
         "pollIntervalSeconds": 1,
         "name": "shopping_list_agent",
-        "prompt": "Add the following required ingredients to my shopping list:\n${menu_planner_agent_ref.output.text}\nThen show me the list."
+        "prompt": "Add the following required ingredients to my shopping list:\n${menu_planner_agent_ref.output.output.context.required_ingredients}\nThen show me the list."
       },
       "type": "AGENT",
       "decisionCases": {},
@@ -287,7 +289,9 @@
                         "type": "string"
                       }
                     },
-                    "required": ["item"]
+                    "required": [
+                      "item"
+                    ]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -338,7 +342,10 @@
       }
     }
   ],
-  "inputParameters": ["query", "people_count"],
+  "inputParameters": [
+    "query",
+    "people_count"
+  ],
   "outputParameters": {
     "menu_plan": "${format_menu_plan_ref.output.result}",
     "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}"

@@ -73,8 +73,8 @@ In your final response, first present the weekly menu plan so the user can
 review it (day, meal, recipe, and servings). Then add a section titled
 "Required Ingredients" that lists every ingredient from the
 "required_ingredients" key of the create_menu_plan tool result, one per
-line, each prefixed with "- ", exactly as returned by the tool. This list
-is passed to a shopping list agent, so do not add, omit, or reword any line.
+line, each prefixed with "- ", exactly as returned by the tool, so the
+reviewer can see what will be purchased.
 
 After presenting the plan and the required ingredients, stop.
 """
