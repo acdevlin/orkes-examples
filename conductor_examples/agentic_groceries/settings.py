@@ -16,6 +16,9 @@ SERVER_URL = "https://developer.orkescloud.com/api"
 CONDUCTOR_AUTH_KEY = os.environ.get("CONDUCTOR_AUTH_KEY", None)
 CONDUCTOR_AUTH_SECRET = os.environ.get("CONDUCTOR_AUTH_SECRET", None)
 
+# Approver for the workflow's human menu approval task.
+HUMAN_APPROVER_EMAIL = os.environ.get("HUMAN_APPROVER_EMAIL", None)
+
 # Maximum number of turns for the agent to take before stopping.
 MAX_TURNS = 10
 # Tool poll interval in milliseconds, used within an agentic runtime.

@@ -10,6 +10,7 @@ from prompts import (
   RECIPE_FINDER_PROMPT_TEXT,
   SHOPPING_LIST_PROMPT_TEXT,
 )
+from settings import HUMAN_APPROVER_EMAIL
 
 _AGENT_PROMPTS = {
   "recipe_finder_agent": RECIPE_FINDER_PROMPT_TEXT,
@@ -35,6 +36,35 @@ def patch_workflow_prompts(workflow: dict) -> dict:
     prompt = _AGENT_PROMPTS.get(task.get("name"))
     if prompt is not None:
       agent_config["instructions"] = prompt
+  return workflow
+
+
+def patch_human_approver(workflow: dict) -> dict:
+  """Overwrite the human menu approval task's assignee and the workflow owner
+  email with the configured HUMAN_APPROVER_EMAIL.
+
+  Args:
+    workflow: A Conductor workflow definition dict loaded from JSON.
+
+  Returns:
+    The same workflow dict with the approver email patched in place.
+
+  Raises:
+    ValueError: If HUMAN_APPROVER_EMAIL is not configured.
+  """
+  if HUMAN_APPROVER_EMAIL is None:
+    raise ValueError(
+      "HUMAN_APPROVER_EMAIL environment variable is not set. "
+      "Set it to the email that should approve the menu plan then try again."
+    )
+  for task in workflow.get("tasks", []):
+    human_task = task.get("inputParameters", {}).get("__humanTaskDefinition")
+    if human_task is None:
+      continue
+    for assignment in human_task.get("assignments", []):
+      assignee = assignment.get("assignee", {})
+      assignee["user"] = HUMAN_APPROVER_EMAIL
+  workflow["ownerEmail"] = HUMAN_APPROVER_EMAIL
   return workflow
 
 

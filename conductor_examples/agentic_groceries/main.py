@@ -18,7 +18,7 @@ from menu_plan_formatter import ensure_format_menu_plan_worker
 from recipe_extractor import ensure_extract_recipes_worker
 from recipe_finder_agent import create_recipe_finder_agent, find_recipes
 from settings import POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
-from shared_utils import patch_workflow_prompts
+from shared_utils import patch_human_approver, patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
 
 
@@ -54,6 +54,8 @@ def upload_meal_planner_workflow(api_config):
     data = json.load(file)
   # Keep the workflow's embedded agent prompts in sync with prompts.py.
   patch_workflow_prompts(data)
+  # Point the human menu approval task at the configured approver.
+  patch_human_approver(data)
   metadata_client = OrkesClients(configuration=api_config).get_metadata_client()
   metadata_client.register_workflow_def(workflow_def=data, overwrite=True)
 

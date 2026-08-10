@@ -185,7 +185,7 @@
           "assignments": [
             {
               "assignee": {
-                "user": "acdevlin42@gmail.com",
+                "user": "",
                 "userType": "CONDUCTOR_USER"
               },
               "slaMinutes": 1440
@@ -347,7 +347,7 @@
   "schemaVersion": 2,
   "restartable": true,
   "workflowStatusListenerEnabled": false,
-  "ownerEmail": "acdevlin42@gmail.com",
+  "ownerEmail": "",
   "timeoutPolicy": "ALERT_ONLY",
   "timeoutSeconds": 0,
   "variables": {},
