@@ -154,8 +154,10 @@ def main():
         # Use the JSONified recipes to generate a weekly menu plan for 2 people.
         menu_planner_result = runtime.run(
             menu_planner_agent,
-            (f"Plan dinners for 2 people for the next 7 days "
-             f"using only these recipes:\n{recipes_text}",),
+            (
+              f"Plan dinners for 2 people for the next 7 days "
+              f"using only these recipes:\n{recipes_text}",
+            )
         )
         print("\n\nMenu Planner Result:")
         menu_planner_result.print_result()
