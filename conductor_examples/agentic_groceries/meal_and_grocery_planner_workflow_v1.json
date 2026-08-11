@@ -14,7 +14,7 @@
         "text": "",
         "pollIntervalSeconds": 1,
         "name": "recipe_finder_agent",
-        "prompt": "${workflow.input.query}"
+        "prompt": "${workflow.input.query}\nFind ${workflow.input.recipe_count} recipes."
       },
       "type": "AGENT",
       "decisionCases": {},
@@ -45,16 +45,19 @@
             "agentConfig": {
               "name": "recipe_finder_agent",
               "model": "OpenAI_Key/gpt-4o-mini",
-              "instructions": "\nYou help find recipes based on dietary preferences, palate, or other requirements.\nUse the find_recipes tool to retrieve a list of recipes.\nTry to select a wide variety of different recipes to provide the user with options.\n\nIMPORTANT: Dietary preferences will be specified in the user input, and you must always\npass them to find_recipes so the tool filters the results. If no dietary preferences are\nspecified, you may call find_recipes without arguments and return a general list of recipes.\n\nIMPORTANT: Your final response is consumed by a menu planner agent, so it must include the\ncomplete structured data for every recipe you found, not just a human-readable summary.\nFirst summarize the recipes for the user. Then, as the final part of your response, output a\nsingle markdown fenced code block tagged with \"json\" containing exactly the \"recipes\" array\nfrom the find_recipes tool result, with every field intact: name, ingredients (each with\namount, unit, and item), servings, description, and vegetarian. The code block must contain\nnothing but the JSON array. Do not truncate, rename, or omit any recipe or ingredient.\n",
+              "instructions": "\nYou help find recipes based on dietary preferences, palate, or other requirements.\nUse the find_recipes tool to retrieve a list of recipes.\nTry to select a wide variety of different recipes to provide the user with options.\n\nIMPORTANT: Dietary preferences will be specified in the user input, and you must always\npass them to find_recipes so the tool filters the results. If no dietary preferences are\nspecified, you may call find_recipes without arguments and return a general list of recipes.\n\nIMPORTANT: The find_recipes tool fetches live recipes from BBC Food. The user input states\nhow many recipes to fetch; pass that number to its recipe_count argument (the default is\n10), and pass a larger recipe_count when the user wants more options.\n\nIMPORTANT: Your final response is consumed by a menu planner agent, so it must include the\ncomplete structured data for every recipe you found, not just a human-readable summary.\nFirst summarize the recipes for the user. Then, as the final part of your response, output a\nsingle markdown fenced code block tagged with \"json\" containing exactly the \"recipes\" array\nfrom the find_recipes tool result, with every field intact: name, ingredients (each with\namount, unit, and item), servings, description, and vegetarian. The code block must contain\nnothing but the JSON array. Do not truncate, rename, or omit any recipe or ingredient.\n",
               "tools": [
                 {
                   "name": "find_recipes",
-                  "description": "Find recipes based on provided dietary preference, palate, or other requirements.\n\nArgs:\n  preferences: Dietary preference (eg: \"vegetarian\") used to filter the results.\n\nReturns:\n  Dictionary with a list of recipes.",
+                  "description": "Find recipes based on provided dietary preference, palate, or other requirements.\n\nScrapes live recipes from BBC Food matching the preferences. When the\npreferences imply a vegetarian or vegan diet, only recipes verified as\nsuch by the source are returned.\n\nArgs:\n  preferences: Dietary preference (eg: \"vegetarian\") used to filter the results.\n  recipe_count: Number of recipes to fetch.\n\nReturns:\n  Dictionary with a list of recipes.",
                   "inputSchema": {
                     "type": "object",
                     "properties": {
                       "preferences": {
                         "type": "string"
+                      },
+                      "recipe_count": {
+                        "type": "integer"
                       }
                     }
                   },
@@ -344,7 +347,8 @@
   ],
   "inputParameters": [
     "query",
-    "people_count"
+    "people_count",
+    "recipe_count"
   ],
   "outputParameters": {
     "menu_plan": "${format_menu_plan_ref.output.result}",

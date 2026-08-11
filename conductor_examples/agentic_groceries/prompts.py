@@ -36,6 +36,10 @@ IMPORTANT: Dietary preferences will be specified in the user input, and you must
 pass them to find_recipes so the tool filters the results. If no dietary preferences are
 specified, you may call find_recipes without arguments and return a general list of recipes.
 
+IMPORTANT: The find_recipes tool fetches live recipes from BBC Food. The user input states
+how many recipes to fetch; pass that number to its recipe_count argument (the default is
+10), and pass a larger recipe_count when the user wants more options.
+
 IMPORTANT: Your final response is consumed by a menu planner agent, so it must include the
 complete structured data for every recipe you found, not just a human-readable summary.
 First summarize the recipes for the user. Then, as the final part of your response, output a

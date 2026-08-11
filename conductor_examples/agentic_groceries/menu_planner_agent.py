@@ -20,11 +20,20 @@ from shared_utils import ensure_prompt
 DEFAULT_MEALS = ["breakfast", "lunch", "dinner"]
 
 _ABBREV = ("g", "kg", "ml", "oz", "lb")
-_IRREGULAR = {"tomato": "tomatoes", "strawberry": "strawberries"}
+# Irregular plurals (leaf -> leaves, tomato -> tomatoes), plus invariant
+# words that keep their form for any quantity (eg: "fish", "children").
+_IRREGULAR = {
+  "tomato": "tomatoes", "potato": "potatoes", "chilli": "chillies",
+  "strawberry": "strawberries", "leaf": "leaves", "loaf": "loaves",
+  "half": "halves", "knife": "knives",
+  "fish": "fish", "sheep": "sheep", "children": "children",
+  "people": "people", "men": "men", "women": "women", "deer": "deer",
+  "anise": "anise",
+}
 
 
-def plural(word: str) -> str:
-  """Pluralize a simple countable noun.
+def _plural_word(word: str) -> str:
+  """Pluralize a single countable noun.
 
   Args:
     word: Word to pluralize (eg: "cup" or "tomato").
@@ -34,9 +43,29 @@ def plural(word: str) -> str:
   """
   if word in _IRREGULAR:
     return _IRREGULAR[word]
-  if word.endswith(("s", "x", "ch", "sh")):
+  if word.endswith("s"):
+    # Either already plural (BBC writes countable items in the plural) or a
+    # singular word that ends in "s" (eg: "cress"); never double-pluralize.
+    return word
+  if word.endswith(("x", "ch", "sh")):
     return word + "es"
+  if len(word) > 1 and word.endswith("y") and word[-2] not in "aeiou":
+    return word[:-1] + "ies"
   return word + "s"
+
+
+def plural(word: str) -> str:
+  """Pluralize a countable noun, or the final word of a noun phrase.
+
+  Args:
+    word: Word or phrase to pluralize (eg: "cup", "tomato", or
+      "cherry tomato").
+
+  Returns:
+    The plural form (eg: "cups", "tomatoes", or "cherry tomatoes").
+  """
+  head, sep, last = word.rpartition(" ")
+  return f"{head}{sep}{_plural_word(last)}"
 
 
 def render_ingredient(amount: float, unit: str, item: str) -> str:
