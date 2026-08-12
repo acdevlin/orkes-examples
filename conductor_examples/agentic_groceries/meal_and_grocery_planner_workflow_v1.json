@@ -2,88 +2,184 @@
   "createTime": 0,
   "updateTime": 1785975742664,
   "name": "Meal And Grocery Planner",
-  "description": "3 agents working together to find potential recipes that meet specified criteria (eg: dietary restrictions or ingredient contents), plan which ones to use for a menu over the next 7 days, then assemble a shopping list for these ingredients.",
+  "description": "4 agents working together to find potential recipes that meet specified criteria (eg: dietary restrictions or ingredient contents), plan which ones to use for a menu over the next 7 days, then assemble a shopping list for these ingredients.",
   "version": 1,
   "tasks": [
     {
-      "name": "recipe_finder_agent",
-      "taskReferenceName": "recipe_finder_agent_ref",
-      "inputParameters": {
-        "agentType": "conductor",
-        "agentUrl": "",
-        "text": "",
-        "pollIntervalSeconds": 1,
-        "name": "recipe_finder_agent",
-        "prompt": "${workflow.input.query}\nFind ${workflow.input.recipe_count} recipes."
-      },
-      "type": "AGENT",
-      "decisionCases": {},
+      "name": "fork",
+      "taskReferenceName": "fork_ref",
+      "inputParameters": {},
+      "type": "FORK_JOIN",
       "defaultCase": [],
-      "forkTasks": [],
-      "startDelay": 0,
-      "joinOn": [],
-      "optional": false,
-      "defaultExclusiveJoinTask": [],
-      "asyncComplete": false,
-      "loopOver": [],
-      "onStateChange": {},
-      "permissive": false,
-      "metadata": {
-        "agent": {
-          "schemaVersion": 1,
-          "agentType": "conductor",
-          "displayName": "recipe_finder_agent",
-          "source": {
-            "name": "recipe_finder_agent"
-          },
-          "resolved": true,
-          "conductor": {
-            "name": "recipe_finder_agent",
-            "resolvedVersion": 1,
-            "framework": "conductor",
-            "normalization": "normalized",
-            "agentConfig": {
-              "name": "recipe_finder_agent",
-              "model": "OpenAI_Key/gpt-4o-mini",
-              "instructions": "\nYou help find recipes based on dietary preferences, palate, or other requirements.\nUse the find_recipes tool to retrieve a list of recipes.\nTry to select a wide variety of different recipes to provide the user with options.\n\nIMPORTANT: Dietary preferences will be specified in the user input, and you must always\npass them to find_recipes so the tool filters the results. If no dietary preferences are\nspecified, you may call find_recipes without arguments and return a general list of recipes.\n\nIMPORTANT: The find_recipes tool fetches live recipes from BBC Food. The user input states\nhow many recipes to fetch; pass that number to its recipe_count argument (the default is\n10), and pass a larger recipe_count when the user wants more options.\n\nIMPORTANT: Your final response is consumed by a menu planner agent, so it must include the\ncomplete structured data for every recipe you found, not just a human-readable summary.\nFirst summarize the recipes for the user. Then, as the final part of your response, output a\nsingle markdown fenced code block tagged with \"json\" containing exactly the \"recipes\" array\nfrom the find_recipes tool result, with every field intact: name, ingredients (each with\namount, unit, and item), servings, description, and vegetarian. The code block must contain\nnothing but the JSON array. Do not truncate, rename, or omit any recipe or ingredient.\n",
-              "tools": [
-                {
-                  "name": "find_recipes",
-                  "description": "Find recipes based on provided dietary preference, palate, or other requirements.\n\nScrapes live recipes from BBC Food matching the preferences. When the\npreferences imply a vegetarian or vegan diet, only recipes verified as\nsuch by the source are returned.\n\nArgs:\n  preferences: Dietary preference (eg: \"vegetarian\") used to filter the results.\n  recipe_count: Number of recipes to fetch.\n\nReturns:\n  Dictionary with a list of recipes.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "preferences": {
-                        "type": "string"
-                      },
-                      "recipe_count": {
-                        "type": "integer"
+      "forkTasks": [
+        [
+          {
+            "name": "recipe_finder_bbc_agent",
+            "taskReferenceName": "recipe_finder_bbc_agent",
+            "inputParameters": {
+              "agentType": "conductor",
+              "agentUrl": "",
+              "text": "",
+              "pollIntervalSeconds": 1,
+              "name": "recipe_finder_bbc_agent",
+              "prompt": "${workflow.input.query}\nFind ${workflow.input.recipe_count} recipes."
+            },
+            "type": "AGENT",
+            "decisionCases": {},
+            "defaultCase": [],
+            "forkTasks": [],
+            "startDelay": 0,
+            "joinOn": [],
+            "optional": true,
+            "defaultExclusiveJoinTask": [],
+            "asyncComplete": false,
+            "loopOver": [],
+            "onStateChange": {},
+            "permissive": false,
+            "metadata": {
+              "agent": {
+                "schemaVersion": 1,
+                "agentType": "conductor",
+                "displayName": "recipe_finder_bbc_agent",
+                "source": {
+                  "name": "recipe_finder_bbc_agent"
+                },
+                "resolved": true,
+                "conductor": {
+                  "name": "recipe_finder_bbc_agent",
+                  "resolvedVersion": 1,
+                  "framework": "conductor",
+                  "normalization": "normalized",
+                  "agentConfig": {
+                    "name": "recipe_finder_bbc_agent",
+                    "model": "OpenAI_Key/gpt-4o-mini",
+                    "instructions": "\nYou help find recipes based on dietary preferences, palate, or other requirements.\nUse the find_bbc_recipes tool to retrieve a list of recipes.\nTry to select a wide variety of different recipes to provide the user with options.\n\nIMPORTANT: Dietary preferences will be specified in the user input, and you must always\npass them to find_bbc_recipes so the tool filters the results. If no dietary preferences are\nspecified, you may call find_bbc_recipes without arguments and return a general list of recipes.\n\nIMPORTANT: The find_bbc_recipes tool fetches live recipes from BBC Food. The user input states\nhow many recipes to fetch; pass that number to its recipe_count argument (the default is\n10), and pass a larger recipe_count when the user wants more options.\n\nIMPORTANT: Your final response is consumed by a menu planner agent, so it must include the\ncomplete structured data for every recipe you found, not just a human-readable summary.\nFirst summarize the recipes for the user. Then, as the final part of your response, output a\nsingle markdown fenced code block tagged with \"json\" containing exactly the \"recipes\" array\nfrom the find_bbc_recipes tool result, with every field intact: name, ingredients (each with\namount, unit, and item), servings, description, and vegetarian. The code block must contain\nnothing but the JSON array. Do not truncate, rename, or omit any recipe or ingredient.\n",
+                    "tools": [
+                      {
+                        "name": "find_bbc_recipes",
+                        "description": "Find recipes on BBC Food based on provided dietary preference, palate, or other requirements.\n\nScrapes live recipes from BBC Food matching the preferences. When the\npreferences imply a vegetarian or vegan diet, only recipes verified as\nsuch by the source are returned.\n\nArgs:\n  preferences: Dietary preference (eg: \"vegetarian\") used to filter the results.\n  recipe_count: Number of recipes to fetch.\n\nReturns:\n  Dictionary with a list of recipes.",
+                        "inputSchema": {
+                          "type": "object",
+                          "properties": {
+                            "preferences": {
+                              "type": "string"
+                            },
+                            "recipe_count": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "outputSchema": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "toolType": "worker",
+                        "approvalRequired": false,
+                        "stateful": false
                       }
-                    }
-                  },
-                  "outputSchema": {
-                    "type": "object",
-                    "additionalProperties": {}
-                  },
-                  "toolType": "worker",
-                  "approvalRequired": false,
-                  "stateful": false
+                    ],
+                    "strategy": "handoff",
+                    "maxTurns": 10,
+                    "timeoutSeconds": 0,
+                    "external": false
+                  }
                 }
-              ],
-              "strategy": "handoff",
-              "maxTurns": 10,
-              "timeoutSeconds": 0,
-              "external": false
+              }
             }
           }
-        }
-      }
+        ],
+        [
+          {
+            "name": "recipe_finder_thymeout_agent",
+            "taskReferenceName": "recipe_finder_thymeout_agent_ref",
+            "inputParameters": {
+              "agentType": "conductor",
+              "agentUrl": "",
+              "text": "",
+              "pollIntervalSeconds": 1,
+              "name": "recipe_finder_thymeout_agent",
+              "prompt": "${workflow.input.query}\nFind ${workflow.input.recipe_count} recipes."
+            },
+            "type": "AGENT",
+            "decisionCases": {},
+            "defaultCase": [],
+            "forkTasks": [],
+            "startDelay": 0,
+            "joinOn": [],
+            "optional": true,
+            "defaultExclusiveJoinTask": [],
+            "asyncComplete": false,
+            "loopOver": [],
+            "onStateChange": {},
+            "permissive": false,
+            "metadata": {
+              "agent": {
+                "schemaVersion": 1,
+                "agentType": "conductor",
+                "displayName": "recipe_finder_thymeout_agent",
+                "source": {
+                  "name": "recipe_finder_thymeout_agent"
+                },
+                "resolved": true,
+                "conductor": {
+                  "name": "recipe_finder_thymeout_agent",
+                  "resolvedVersion": 1,
+                  "framework": "conductor",
+                  "normalization": "normalized",
+                  "agentConfig": {
+                    "name": "recipe_finder_thymeout_agent",
+                    "model": "OpenAI_Key/gpt-4o-mini",
+                    "instructions": "\nYou help find recipes based on dietary preferences, palate, or other requirements.\nUse the find_thymeout_recipes tool to retrieve a list of recipes.\nTry to select a wide variety of different recipes to provide the user with options.\n\nIMPORTANT: Dietary preferences will be specified in the user input, and you must always\npass them to find_thymeout_recipes so the tool filters the results. If no dietary preferences are\nspecified, you may call find_thymeout_recipes without arguments and return a general list of recipes.\n\nIMPORTANT: The find_thymeout_recipes tool fetches live recipes from ThymeOut. The user input states\nhow many recipes to fetch; pass that number to its recipe_count argument (the default is\n10), and pass a larger recipe_count when the user wants more options.\n\nIMPORTANT: Your final response is consumed by a menu planner agent, so it must include the\ncomplete structured data for every recipe you found, not just a human-readable summary.\nFirst summarize the recipes for the user. Then, as the final part of your response, output a\nsingle markdown fenced code block tagged with \"json\" containing exactly the \"recipes\" array\nfrom the find_thymeout_recipes tool result, with every field intact: name, ingredients (each with\namount, unit, and item), servings, description, and vegetarian. The code block must contain\nnothing but the JSON array. Do not truncate, rename, or omit any recipe or ingredient.\n",
+                    "tools": [
+                      {
+                        "name": "find_thymeout_recipes",
+                        "description": "Find recipes on ThymeOut based on provided dietary preference, palate, or other requirements.\n\nScrapes live recipes from ThymeOut matching the preferences. When the\npreferences imply a vegetarian or vegan diet, only recipes verified as\nsuch by the source are returned.\n\nArgs:\n  preferences: Dietary preference (eg: \"vegetarian\") used to filter the results.\n  recipe_count: Number of recipes to fetch.\n\nReturns:\n  Dictionary with a list of recipes.",
+                        "inputSchema": {
+                          "type": "object",
+                          "properties": {
+                            "preferences": {
+                              "type": "string"
+                            },
+                            "recipe_count": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "outputSchema": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "toolType": "worker",
+                        "approvalRequired": false,
+                        "stateful": false
+                      }
+                    ],
+                    "strategy": "handoff",
+                    "maxTurns": 10,
+                    "timeoutSeconds": 0,
+                    "external": false
+                  }
+                }
+              }
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "name": "join",
+      "taskReferenceName": "join_ref",
+      "inputParameters": {},
+      "type": "JOIN",
+      "joinOn": ["recipe_finder_bbc_agent", "recipe_finder_thymeout_agent_ref"],
+      "optional": false,
+      "asyncComplete": false
     },
     {
       "name": "extract_recipes",
       "taskReferenceName": "extract_recipes_ref",
       "inputParameters": {
-        "text": "${recipe_finder_agent_ref.output.text}"
+        "join_output": "${join_ref.output}"
       },
       "type": "SIMPLE",
       "decisionCases": {},
@@ -159,9 +255,7 @@
                         "items": {}
                       }
                     },
-                    "required": [
-                      "recipes"
-                    ]
+                    "required": ["recipes"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -292,9 +386,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "item"
-                    ]
+                    "required": ["item"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -345,11 +437,7 @@
       }
     }
   ],
-  "inputParameters": [
-    "query",
-    "people_count",
-    "recipe_count"
-  ],
+  "inputParameters": ["query", "people_count", "recipe_count"],
   "outputParameters": {
     "menu_plan": "${format_menu_plan_ref.output.result}",
     "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}"

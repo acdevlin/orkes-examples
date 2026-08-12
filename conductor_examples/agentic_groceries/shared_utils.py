@@ -7,13 +7,15 @@ from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
 from prompts import (
   MENU_PLANNER_PROMPT_TEXT,
-  RECIPE_FINDER_PROMPT_TEXT,
+  RECIPE_FINDER_BBC_PROMPT_TEXT,
+  RECIPE_FINDER_THYMEOUT_PROMPT_TEXT,
   SHOPPING_LIST_PROMPT_TEXT,
 )
 from settings import HUMAN_APPROVER_EMAIL
 
 _AGENT_PROMPTS = {
-  "recipe_finder_agent": RECIPE_FINDER_PROMPT_TEXT,
+  "recipe_finder_bbc_agent": RECIPE_FINDER_BBC_PROMPT_TEXT,
+  "recipe_finder_thymeout_agent": RECIPE_FINDER_THYMEOUT_PROMPT_TEXT,
   "menu_planner_agent": MENU_PLANNER_PROMPT_TEXT,
   "shopping_list_agent": SHOPPING_LIST_PROMPT_TEXT,
 }
@@ -41,6 +43,23 @@ def extract_tool_output(result, key):
   return None
 
 
+def _patch_task_prompts(task: dict) -> None:
+  """Overwrite one task's embedded agent instructions with the current
+  prompt text from prompts.py, recursing into any fork branches.
+
+  Args:
+    task: A Conductor task definition dict (or fork branch task).
+  """
+  agent_config = task.get("metadata", {}).get("agent", {}).get("conductor", {}).get("agentConfig")
+  if agent_config is not None:
+    prompt = _AGENT_PROMPTS.get(task.get("name"))
+    if prompt is not None:
+      agent_config["instructions"] = prompt
+  for branch in task.get("forkTasks", []):
+    for sub in branch:
+      _patch_task_prompts(sub)
+
+
 def patch_workflow_prompts(workflow: dict) -> dict:
   """Overwrite each agent task's embedded instructions in a workflow def
   with the current prompt text from prompts.py.
@@ -52,12 +71,7 @@ def patch_workflow_prompts(workflow: dict) -> dict:
     The same workflow dict with the agent instructions patched in place.
   """
   for task in workflow.get("tasks", []):
-    agent_config = task.get("metadata", {}).get("agent", {}).get("conductor", {}).get("agentConfig")
-    if agent_config is None:
-      continue
-    prompt = _AGENT_PROMPTS.get(task.get("name"))
-    if prompt is not None:
-      agent_config["instructions"] = prompt
+    _patch_task_prompts(task)
   return workflow
 
 

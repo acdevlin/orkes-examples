@@ -16,7 +16,10 @@ from conductor.client.orkes_clients import OrkesClients
 from menu_planner_agent import create_menu_planner_agent
 from menu_plan_formatter import ensure_format_menu_plan_worker
 from recipe_extractor import ensure_extract_recipes_worker, extract_recipes
-from recipe_finder_agent import create_recipe_finder_agent
+from recipe_finder_agent import (
+  create_recipe_finder_bbc_agent,
+  create_recipe_finder_thymeout_agent,
+)
 from settings import POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
 from shared_utils import extract_tool_output, patch_human_approver, patch_workflow_prompts
 from shopping_list_agent import create_shopping_list_agent
@@ -106,12 +109,14 @@ def main():
   )
 
   with runtime:
-    # Create the agents
-    recipe_finder_agent = create_recipe_finder_agent(prompt_client)
+    # Create the agents (one recipe finder per source, run as workflow forks)
+    recipe_finder_bbc_agent = create_recipe_finder_bbc_agent(prompt_client)
+    recipe_finder_thymeout_agent = create_recipe_finder_thymeout_agent(prompt_client)
     menu_planner_agent = create_menu_planner_agent(prompt_client)
     shopping_list_agent = create_shopping_list_agent(prompt_client)
     # Deploy the agents to Orkes Conductor
-    runtime.deploy(recipe_finder_agent)
+    runtime.deploy(recipe_finder_bbc_agent)
+    runtime.deploy(recipe_finder_thymeout_agent)
     runtime.deploy(menu_planner_agent)
     runtime.deploy(shopping_list_agent)
     print("Deployment complete.")
@@ -127,21 +132,40 @@ def main():
         print("Exiting after deployment, as requested.")
     elif args.server:
         print("Serving to Orkes Conductor. Press Ctrl+C to exit.")
-        runtime.serve(recipe_finder_agent, menu_planner_agent, shopping_list_agent)
+        runtime.serve(
+            recipe_finder_bbc_agent,
+            recipe_finder_thymeout_agent,
+            menu_planner_agent,
+            shopping_list_agent,
+        )
     else:
         print("Running the workflow once locally.")
 
-        # Find recipes based on user input.
-        recipe_finder_result = runtime.run(
-            recipe_finder_agent,
+        # Find recipes based on user input, one agent per source, mirroring
+        # the workflow's fork/join over BBC Food and ThymeOut.
+        recipe_finder_bbc_result = runtime.run(
+            recipe_finder_bbc_agent,
             ("Find me some vegetarian recipes.",),
         )
-        print("\n\nRecipe Finder Result:")
-        recipe_finder_result.print_result()
+        recipe_finder_thymeout_result = runtime.run(
+            recipe_finder_thymeout_agent,
+            ("Find me some vegetarian recipes.",),
+        )
+        print("\n\nRecipe Finder Results (BBC + ThymeOut):")
+        recipe_finder_bbc_result.print_result()
+        recipe_finder_thymeout_result.print_result()
 
-        # Extract the recipes from the finder's output text exactly like the
-        # workflow's extract_recipes task does.
-        recipes = extract_recipes(recipe_finder_result.output["result"])["recipes"]
+        # Extract the recipes from each finder's output exactly like the
+        # workflow's extract_recipes task does, mimicking the join task's
+        # output (a dict keyed by each finder's task reference name).
+        recipes = extract_recipes({
+          "recipe_finder_bbc_agent": {
+            "text": recipe_finder_bbc_result.output["result"],
+          },
+          "recipe_finder_thymeout_agent_ref": {
+            "text": recipe_finder_thymeout_result.output["result"],
+          },
+        })["recipes"]
         if not recipes:
           print("No suitable recipes found. Exiting.")
           return

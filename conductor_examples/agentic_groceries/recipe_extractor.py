@@ -28,36 +28,46 @@ _TASK_DEF = TaskDef(
   register_task_def=True,
   overwrite_task_def=True,
 )
-def extract_recipes(text: str) -> dict:
-  """Extract the recipe JSON array from the recipe finder agent's text.
+def extract_recipes(join_output: dict) -> dict:
+  """Extract the recipe JSON arrays from the recipe finder agents' output.
 
-  The recipe finder agent is prompted to end its response with a markdown
-  fenced code block tagged with "json" containing the recipe array, so this
-  worker parses and validates that block rather than scanning arbitrary prose.
+  Each recipe finder agent is prompted to end its response with a markdown
+  fenced code block tagged with "json" containing its recipe array. With the
+  fork/join workflow, the join task aggregates both agents' outputs keyed by
+  their task reference names; every fenced block across the present agents
+  is parsed and the recipe dicts from all of them are merged into one list.
+  A source whose fork failed is absent from the join output and is skipped.
 
   Args:
-    text: The recipe finder agent's final response, which embeds the recipe
-      data as a JSON array in a markdown code block.
+    join_output: The join task's output: a dict keyed by the recipe finder
+      task reference names, whose values are the agents' output dicts (each
+      with a "text" field embedding recipe data as JSON arrays).
 
   Returns:
-    Dictionary with the extracted "recipes" list.
+    Dictionary with the merged "recipes" list.
 
   Raises:
-    ValueError: If no fenced block parses to a non-empty list of recipe dicts.
+    ValueError: If no fenced block parses to a list of recipe dicts.
   """
-  if not text:
-    raise ValueError("No recipe data received from the recipe finder agent.")
-  for match in _FENCE.finditer(text):
+  refs = ("recipe_finder_bbc_agent", "recipe_finder_thymeout_agent_ref")
+  parts = []
+  for ref in refs:
+    output = (join_output or {}).get(ref) or {}
+    if not isinstance(output, dict):
+      continue
+    text = output.get("text") or ""
+    if text:
+      parts.append(text)
+  recipes = []
+  for match in _FENCE.finditer("\n\n".join(parts)):
     try:
-      recipes = json.loads(match.group(1))
+      parsed = json.loads(match.group(1))
     except (json.JSONDecodeError, ValueError):
       continue
-    if (
-      isinstance(recipes, list)
-      and recipes
-      and all(isinstance(r, dict) for r in recipes)
-    ):
-      return {"recipes": recipes}
+    if isinstance(parsed, list):
+      recipes += [r for r in parsed if isinstance(r, dict)]
+  if recipes:
+    return {"recipes": recipes}
   raise ValueError("Could not find a valid recipe JSON array in the recipe finder output.")
 
 
