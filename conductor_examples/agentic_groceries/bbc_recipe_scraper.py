@@ -207,6 +207,7 @@ def parse_ingredient(line: str) -> dict:
     text as the item.
   """
   body = line.strip().strip(".")
+  body = body.lstrip("-+ −–—").strip()
   body = re.split(r",| \(", body)[0].strip()
   body = re.sub(_ARTICLES_RE, "", body, flags=re.I)
   body = re.sub(r"^(" + "|".join(_DESCRIPTORS) + r")\s+", "", body, flags=re.I).strip()
@@ -255,12 +256,16 @@ def parse_ingredient(line: str) -> dict:
     return {"amount": _DEFAULT_AMOUNT, "unit": None, "item": body}
   amount = amt
   rest = re.sub(_QTY_TOKEN_RE, "", body).strip()
+  # Strip leading "of " preposition that may remain after quantity extraction
+  rest = re.sub(r"^of\s+", "", rest, flags=re.I).strip()
   unit = None
   for candidate in _UNITS:
     if re.match(rf"^{re.escape(candidate)}(?=\s|$)", rest, re.I):
       unit = candidate
       rest = rest[len(candidate):].strip()
       break
+  # Strip leading dash/hyphen from item name (artifacts from BBC formatting)
+  rest = rest.lstrip("-+ −–—").strip()
   item = re.sub(_PREP_RE, "", rest.strip()).strip()
   unit = singular(unit)
   if unit is None:

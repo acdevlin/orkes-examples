@@ -189,9 +189,23 @@ def render_ingredient(amount: float, unit: Optional[str], item: str) -> str:
     A single ingredient line (eg: "15 oz of chickpeas", "1/3 cup of flour",
     "3 eggs").
   """
-  if unit is None or unit == "null":
+  if unit is None or unit == "null" or unit == "of":
     # Countable item (e.g. eggs, tomatoes).
-    return f"{int(round(amount))} {item}"
+    # Round to nearest integer, but display as fraction if amount is 
+    # close to a half or quarter.
+    rounded = round(amount)
+    if abs(amount - rounded) < 0.01 and amount != rounded:
+        # Display as fraction for common fractions
+        if abs(amount - 0.5) < 0.01:
+            frac = "1/2"
+        elif abs(amount - 0.25) < 0.01:
+            frac = "1/4"
+        elif abs(amount - 0.75) < 0.01:
+            frac = "3/4"
+        else:
+            frac = str(int(round(amount)))
+        return f"{frac} {item}"
+    return f"{int(rounded)} {item}"
 
   if unit == "oz":
     # Round up to nearest integer.
