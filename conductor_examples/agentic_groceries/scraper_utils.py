@@ -89,28 +89,6 @@ _PLURAL_ITEMS = {
 
 _VEG_KEYWORDS = ("vegetarian", "veggie", "vegan", "meat-free")
 
-# US imperial conversions for the metric units the scraped recipes use. Only
-# same-dimension conversions are performed (weight -> weight, volume ->
-# volume); grams cannot be turned into cups without per-ingredient densities.
-_GRAM_PER_OZ = 28.349523125
-_OZ_PER_LB = 16
-_ML_PER_CUP = 236.5882365
-_ML_PER_TBSP = 14.7867648
-_ML_PER_TSP = 4.92892159375
-_KG_PER_LB = 0.45359237
-_ML_PER_L = 1000
-
-# Readability thresholds: below these magnitudes a smaller unit is clearer.
-_MIN_CUPS = 0.25
-_MIN_TBSP = 1
-
-# Rounding precision per imperial unit.
-_OZ_PRECISION = 1
-_LB_PRECISION = 2
-_CUP_PRECISION = 2
-_TBSP_PRECISION = 1
-_TSP_PRECISION = 1
-
 
 def fetch(url: str, params: Optional[dict] = None) -> str:
   """GET a URL and return its text, decoded as UTF-8.
@@ -167,40 +145,4 @@ def singular_item(item: str) -> str:
   return f"{head}{sep}{singular_last}"
 
 
-def to_imperial(amount: float, unit: Optional[str]) -> tuple:
-  """Convert a metric amount to a US imperial unit of the same dimension.
 
-  Weight converts to ounces (or pounds above 16oz) and volume converts to
-  cups, tablespoons, or teaspoons depending on magnitude. Counts and units
-  that are already imperial (or not measurable, eg: "bag", "cm") are left
-  unchanged.
-
-  Args:
-    amount: Quantity in the current unit.
-    unit: The parsed unit (eg: "g" or "ml"), or None for countable items.
-
-  Returns:
-    A (amount, unit) pair converted to imperial, or the input unchanged when
-    no conversion applies.
-  """
-  if unit is None:
-    return amount, unit
-  key = unit.lower()
-  if key == "kg":
-    return round(amount / _KG_PER_LB, _LB_PRECISION), "lb"
-  if key == "g":
-    oz = amount / _GRAM_PER_OZ
-    if oz >= _OZ_PER_LB:
-      return round(oz / _OZ_PER_LB, _LB_PRECISION), "lb"
-    return round(oz, _OZ_PRECISION), "oz"
-  if key == "ml":
-    cups = amount / _ML_PER_CUP
-    if cups >= _MIN_CUPS:
-      return round(cups, _CUP_PRECISION), "cup"
-    tbsp = amount / _ML_PER_TBSP
-    if tbsp >= _MIN_TBSP:
-      return round(tbsp, _TBSP_PRECISION), "tbsp"
-    return round(amount / _ML_PER_TSP, _TSP_PRECISION), "tsp"
-  if key in ("l", "litre", "litres"):
-    return round(amount * _ML_PER_L / _ML_PER_CUP, _CUP_PRECISION), "cup"
-  return amount, unit

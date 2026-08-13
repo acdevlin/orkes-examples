@@ -27,7 +27,6 @@ from scraper_utils import (
   fetch,
   singular,
   singular_item,
-  to_imperial,
 )
 
 _BASE = "https://thymeout.app"
@@ -119,10 +118,10 @@ def parse_ingredient(qty: str, text: str) -> dict:
   cell ("ml water", "g beef sirloin, cubed", or "onion, diced"). A leading
   unit is split off the text, and any prep clause after the first comma is
   dropped ("onion, diced" -> "onion") so countable items pluralize cleanly
-  and like ingredients aggregate, mirroring the BBC parser. Metric amounts
-  convert to imperial (see to_imperial) and countable items are stored
-  singular, so both sources normalize to the same {amount, unit, item}
-  schema.
+  and like ingredients aggregate, mirroring the BBC parser. Metric amounts and
+  units are stored as parsed and countable items are stored singular, so both
+  sources normalize to the same {amount, unit, item} schema; the shopping list
+  converts metric amounts to imperial when items are added.
 
   Args:
     qty: The quantity cell (a decimal number, or "" when absent).
@@ -150,7 +149,7 @@ def parse_ingredient(qty: str, text: str) -> dict:
     amount = _DEFAULT_AMOUNT
     unit = None
   if unit is not None:
-    amount, unit = to_imperial(amount, singular(unit))
+    unit = singular(unit)
     item = rest
   else:
     item = singular_item(rest or body)

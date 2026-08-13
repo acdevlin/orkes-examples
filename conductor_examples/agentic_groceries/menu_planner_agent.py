@@ -16,79 +16,9 @@ from settings import (
   SERVER_MODELS
 )
 from shared_utils import ensure_prompt
+from shopping_list_agent import render_ingredient
 
 DEFAULT_MEALS = ["breakfast", "lunch", "dinner"]
-
-_ABBREV = ("g", "kg", "ml", "oz", "lb")
-# Irregular plurals (leaf -> leaves, tomato -> tomatoes), plus invariant
-# words that keep their form for any quantity (eg: "fish", "children").
-_IRREGULAR = {
-  "tomato": "tomatoes", "potato": "potatoes", "chilli": "chillies",
-  "strawberry": "strawberries", "leaf": "leaves", "loaf": "loaves",
-  "half": "halves", "knife": "knives",
-  "fish": "fish", "sheep": "sheep", "children": "children",
-  "people": "people", "men": "men", "women": "women", "deer": "deer",
-  "anise": "anise",
-}
-
-
-def _plural_word(word: str) -> str:
-  """Pluralize a single countable noun.
-
-  Args:
-    word: Word to pluralize (eg: "cup" or "tomato").
-
-  Returns:
-    The plural form (eg: "cups" or "tomatoes").
-  """
-  if word in _IRREGULAR:
-    return _IRREGULAR[word]
-  if word.endswith("s"):
-    # Either already plural (BBC writes countable items in the plural) or a
-    # singular word that ends in "s" (eg: "cress"); never double-pluralize.
-    return word
-  if word.endswith(("x", "ch", "sh")):
-    return word + "es"
-  if len(word) > 1 and word.endswith("y") and word[-2] not in "aeiou":
-    return word[:-1] + "ies"
-  return word + "s"
-
-
-def plural(word: str) -> str:
-  """Pluralize a countable noun, or the final word of a noun phrase.
-
-  Args:
-    word: Word or phrase to pluralize (eg: "cup", "tomato", or
-      "cherry tomato").
-
-  Returns:
-    The plural form (eg: "cups", "tomatoes", or "cherry tomatoes").
-  """
-  head, sep, last = word.rpartition(" ")
-  return f"{head}{sep}{_plural_word(last)}"
-
-
-def render_ingredient(amount: float, unit: str, item: str) -> str:
-  """Render a scaled ingredient as a single line.
-
-  Args:
-    amount: Quantity (already scaled).
-    unit: Unit of measure, or None for countable items (eg: "egg").
-    item: Ingredient name (eg: "flour" or "shredded cheese").
-
-  Returns:
-    A single ingredient line (eg: "2 cups of flour" or "3 eggs").
-  """
-  if abs(amount - round(amount)) < 1e-9:
-    qty = str(int(round(amount)))
-  else:
-    qty = f"{amount:.2f}".rstrip("0").rstrip(".")
-  if unit:
-    if unit in _ABBREV:
-      # Attached units (eg: "800g of steak") are never pluralized.
-      return f"{qty}{unit} of {item}"
-    return f"{qty} {unit if amount == 1 else plural(unit)} of {item}"
-  return f"{qty} {item if amount == 1 else plural(item)}"
 
 
 @tool
@@ -160,7 +90,8 @@ def create_menu_plan(
         key = (ing.get("unit"), ing["item"])
         totals[key] = totals.get(key, 0.0) + ing["amount"] * factor
   required_ingredients = [
-    render_ingredient(amount, key[0], key[1]) for key, amount in totals.items()
+    {"amount": round(amount, 3), "unit": key[0], "item": key[1]}
+    for key, amount in totals.items()
   ]
   if context is not None:
     context.state["required_ingredients"] = required_ingredients

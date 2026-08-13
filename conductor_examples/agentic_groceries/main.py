@@ -188,16 +188,21 @@ def main():
         # Read the required ingredients straight from the menu plan tool output.
         menu_ingredients = extract_tool_output(menu_planner_result, "required_ingredients")
         if menu_ingredients:
-          ingredients_text = "\n".join(f"- {ingredient}" for ingredient in menu_ingredients)
+          ingredients_json = json.dumps(menu_ingredients, indent=2)
           shopping_prompt = (
-            f"Add the following required ingredients to my shopping list:\n{ingredients_text}\n"
-            "Then show me the list."
+            "Add every ingredient in the JSON below to my shopping list using the add_item "
+            "tool, passing amount, unit, and item for each (unit is null for countable "
+            "items). Do not convert units yourself; the list converts metric to US imperial "
+            f"automatically.\n{ingredients_json}\nThen call get_list and show me the list."
           )
         else:
           # Fallback if we didn't find any ingredients in the menu plan output.
           shopping_prompt = (
-            "Add a gallon of milk, a dozen eggs, and a loaf of bread to my shopping list. "
-            "Then show me the list."
+            "Add the following ingredients to my shopping list using add_item "
+            "(amount, unit, item), then show me the list: "
+            '[{"amount": 1, "unit": "gallon", "item": "milk"}, '
+            '{"amount": 12, "unit": null, "item": "egg"}, '
+            '{"amount": 1, "unit": "loaf", "item": "bread"}].'
           )
 
         # Generate the final shopping list.

@@ -171,7 +171,10 @@
       "taskReferenceName": "join_ref",
       "inputParameters": {},
       "type": "JOIN",
-      "joinOn": ["recipe_finder_bbc_agent", "recipe_finder_thymeout_agent_ref"],
+      "joinOn": [
+        "recipe_finder_bbc_agent",
+        "recipe_finder_thymeout_agent_ref"
+      ],
       "optional": false,
       "asyncComplete": false
     },
@@ -255,7 +258,9 @@
                         "items": {}
                       }
                     },
-                    "required": ["recipes"]
+                    "required": [
+                      "recipes"
+                    ]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -374,7 +379,7 @@
             "agentConfig": {
               "name": "shopping_list_agent",
               "model": "OpenAI_Key/gpt-4o-mini",
-              "instructions": "\nYou help manage a shopping list. Use add_item to add items,\nget_list to view the list, and clear_list to reset it.\n\nIMPORTANT: Always add all items first, then call get_list separately\nin a follow-up step to verify the list contents. Never call get_list\nin the same batch as add_item calls.\n\nAfter verifying the list, summarize the items for the user and stop.\n",
+              "instructions": "\nYou help manage a shopping list of groceries. Use add_item to add\ningredients, get_list to view the list, and clear_list to reset it.\n\nadd_item takes three arguments:\n- amount: the numeric quantity (a float, eg: 400 or 2)\n- unit: the unit of measure (eg: \"g\", \"ml\", \"kg\"), or null for a\n  countable item like \"egg\"\n- item: the ingredient name (eg: \"chickpeas\")\n\nMetric amounts are converted to US imperial units automatically when an\nitem is added: grams and kilograms become ounces or pounds, and\nmillilitres become cups, tablespoons, or teaspoons. Pass the amount and\nunit exactly as given; never convert them yourself.\n\nIMPORTANT: Always add all items first, then call get_list separately\nin a follow-up step to verify the list contents. Never call get_list\nin the same batch as add_item calls.\n\nAfter verifying the list, summarize the items for the user and stop.\n",
               "tools": [
                 {
                   "name": "add_item",
@@ -386,7 +391,9 @@
                         "type": "string"
                       }
                     },
-                    "required": ["item"]
+                    "required": [
+                      "item"
+                    ]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -437,7 +444,11 @@
       }
     }
   ],
-  "inputParameters": ["query", "people_count", "recipe_count"],
+  "inputParameters": [
+    "query",
+    "people_count",
+    "recipe_count"
+  ],
   "outputParameters": {
     "menu_plan": "${format_menu_plan_ref.output.result}",
     "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}"

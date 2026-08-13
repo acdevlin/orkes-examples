@@ -22,7 +22,6 @@ from scraper_utils import (
   fetch,
   singular,
   singular_item,
-  to_imperial,
 )
 
 _BASE = "https://www.bbc.co.uk"
@@ -198,9 +197,9 @@ def parse_ingredient(line: str) -> dict:
 
   Returns:
     A dict with amount, unit (or None), and item (eg: {"amount": 200,
-    "unit": "g", "item": "penne"}). Metric amounts are converted to US
-    imperial units (see to_imperial) and units and countable items are
-    stored in singular form so downstream rendering pluralizes consistently.
+    "unit": "g", "item": "penne"}). Metric amounts and units are stored as
+    parsed, in singular form, so downstream rendering pluralizes consistently;
+    the shopping list converts them to US imperial units when items are added.
     A weight that describes a container ("400g tin of chickpeas") is used as
     the explicit ingredient amount with the container word dropped; a
     container count without a weight ("2 cans of tomatoes") is preserved as a
@@ -230,11 +229,11 @@ def parse_ingredient(line: str) -> dict:
     if weighted:
       # "2 x 400g tins": the per-container weight is explicit, so the total
       # weight is the amount and the container unit is dropped.
-      amount, unit = to_imperial(
-        float(weighted.group(1)) * float(weighted.group(2)), weighted.group(3),
-      )
+      amount = float(weighted.group(1)) * float(weighted.group(2))
+      unit = singular(weighted.group(3))
     else:
-      amount, unit = to_imperial(float(match.group(1)), singular(unit))
+      amount = float(match.group(1))
+      unit = singular(unit)
     return {
       "amount": amount,
       "unit": unit,
@@ -242,11 +241,13 @@ def parse_ingredient(line: str) -> dict:
     }
 
   # A leading weight describing a container ("400g tin of chickpeas"): the
-  # weight is the explicit amount, so convert it and drop the container word.
+  # weight is the explicit amount, so keep it (and drop the container word)
+  # for the shopping list to convert to imperial when the item is added.
   match = re.match(_WEIGHTED_CONTAINER_RE, body, re.I)
   if match:
     item = re.sub(_PREP_RE, "", match.group(4).strip()).strip()
-    amount, unit = to_imperial(float(match.group(1)), singular(match.group(2).lower()))
+    amount = float(match.group(1))
+    unit = singular(match.group(2).lower())
     return {"amount": amount, "unit": unit, "item": item}
 
   amt = parse_amount(body)
@@ -261,7 +262,7 @@ def parse_ingredient(line: str) -> dict:
       rest = rest[len(candidate):].strip()
       break
   item = re.sub(_PREP_RE, "", rest.strip()).strip()
-  amount, unit = to_imperial(amount, singular(unit))
+  unit = singular(unit)
   if unit is None:
     item = singular_item(item)
   return {"amount": amount, "unit": unit, "item": item}
