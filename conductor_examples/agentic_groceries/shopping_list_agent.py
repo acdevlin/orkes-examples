@@ -6,6 +6,7 @@ Requirements:
     - CONDUCTOR_AUTH_KEY and CONDUCTOR_AUTH_SECRET as environment variables
 """
 
+import math
 from typing import Optional
 
 from conductor.ai.agents import Agent, tool
@@ -40,13 +41,6 @@ _ML_PER_L = 1000
 _MIN_CUPS = 0.25
 _MIN_TBSP = 1
 
-# Rounding precision per imperial unit.
-_OZ_PRECISION = 1
-_LB_PRECISION = 2
-_CUP_PRECISION = 2
-_TBSP_PRECISION = 1
-_TSP_PRECISION = 1
-
 # Attached units (eg: "800g of steak") are never pluralized or spaced.
 _ABBREV = ("g", "kg", "ml", "l", "oz", "lb")
 # Irregular plurals plus invariant words that keep their form for any quantity.
@@ -68,6 +62,11 @@ def to_imperial(amount: float, unit: Optional[str]) -> tuple:
   that are already imperial (or not measurable, eg: "bag", "cm") are left
   unchanged.
 
+  The returned amount is unrounded; rounding is applied by
+  ``render_ingredient`` per the unit type (ounces → ceil integer, cups →
+  round up to nearest third/fourth, all other units → round up to nearest
+  fourth).
+
   Args:
     amount: Quantity in the current unit.
     unit: The parsed unit (eg: "g" or "ml"), or None for countable items.
@@ -80,23 +79,66 @@ def to_imperial(amount: float, unit: Optional[str]) -> tuple:
     return amount, unit
   key = unit.lower()
   if key == "kg":
-    return round(amount / _KG_PER_LB, _LB_PRECISION), "lb"
+    return amount / _KG_PER_LB, "lb"
   if key == "g":
     oz = amount / _GRAM_PER_OZ
     if oz >= _OZ_PER_LB:
-      return round(oz / _OZ_PER_LB, _LB_PRECISION), "lb"
-    return round(oz, _OZ_PRECISION), "oz"
+      return oz / _OZ_PER_LB, "lb"
+    return oz, "oz"
   if key == "ml":
     cups = amount / _ML_PER_CUP
     if cups >= _MIN_CUPS:
-      return round(cups, _CUP_PRECISION), "cup"
+      return cups, "cup"
     tbsp = amount / _ML_PER_TBSP
     if tbsp >= _MIN_TBSP:
-      return round(tbsp, _TBSP_PRECISION), "tbsp"
-    return round(amount / _ML_PER_TSP, _TSP_PRECISION), "tsp"
+      return tbsp, "tbsp"
+    return amount / _ML_PER_TSP, "tsp"
   if key in ("l", "litre", "litres"):
-    return round(amount * _ML_PER_L / _ML_PER_CUP, _CUP_PRECISION), "cup"
+    return amount * _ML_PER_L / _ML_PER_CUP, "cup"
   return amount, unit
+
+
+def _format_cup_fraction(frac: float) -> str:
+  """Convert a fractional cup amount to a string, rounding up to the nearest
+  third or fourth.
+
+  The displayed fractions are: 1/4, 1/3, 1/2, 2/3, 3/4 (and 1 for whole cups).
+  A small epsilon handles floating-point imprecision.
+  """
+  if frac <= 0:
+    return "0"
+  cup_fracs = [
+    (1 / 4, "1/4"),
+    (1 / 3, "1/3"),
+    (1 / 2, "1/2"),
+    (2 / 3, "2/3"),
+    (3 / 4, "3/4"),
+  ]
+  for f_val, f_str in cup_fracs:
+    if f_val >= frac - 1e-12:
+      return f_str
+  # frac > 3/4, round up to 1
+  return "1"
+
+
+def _format_other_fraction(frac: float) -> str:
+  """Convert a fractional amount (for non-ounce, non-cup units) to a string,
+  rounding up to the nearest fourth.
+
+  The displayed fractions are: 1/4, 1/2, 3/4 (and 1 for whole units).
+  """
+  if frac <= 0:
+    return "0"
+  other_fracs = [
+    (1 / 4, "1/4"),
+    (1 / 2, "1/2"),
+    (3 / 4, "3/4"),
+  ]
+  for f_val, f_str in other_fracs:
+    if f_val >= frac - 1e-12:
+      return f_str
+  # frac > 3/4, round up to 1
+  return "1"
 
 
 def _plural_word(word: str) -> str:
@@ -139,23 +181,53 @@ def render_ingredient(amount: float, unit: Optional[str], item: str) -> str:
   """Render a scaled ingredient as a single line.
 
   Args:
-    amount: Quantity (already scaled).
+    amount: Quantity (unrounded; rounding is applied per unit type below).
     unit: Unit of measure, or None for countable items (eg: "egg").
     item: Ingredient name (eg: "flour" or "shredded cheese").
 
   Returns:
-    A single ingredient line (eg: "2 cups of flour" or "3 eggs").
+    A single ingredient line (eg: "15 oz of chickpeas", "1/3 cup of flour",
+    "3 eggs").
   """
-  if abs(amount - round(amount)) < 1e-9:
-    qty = str(int(round(amount)))
-  else:
-    qty = f"{amount:.2f}".rstrip("0").rstrip(".")
-  if unit:
-    if unit in _ABBREV:
-      # Attached units (eg: "800g of steak") are never pluralized.
-      return f"{qty}{unit} of {item}"
-    return f"{qty} {unit if amount == 1 else plural(unit)} of {item}"
-  return f"{qty} {item if amount == 1 else plural(item)}"
+  if unit is None or unit == "null":
+    # Countable item (e.g. eggs, tomatoes).
+    return f"{int(round(amount))} {item}"
+
+  if unit == "oz":
+    # Round up to nearest integer.
+    qty = int(math.ceil(amount))
+    return f"{qty} oz of {item}"
+
+  if unit == "cup":
+    # Display as a fraction, rounding up to the nearest third or fourth.
+    int_part = int(amount)
+    frac = amount - int_part
+
+    if frac <= 1e-12:
+      # Effectively a whole number of cups.
+      return f"{int_part} cup{'s' if int_part != 1 else ''} of {item}"
+
+    frac_str = _format_cup_fraction(frac)
+
+    if int_part == 0:
+      return f"{frac_str} cup of {item}"
+    # Mixed number: whole cups plus a fractional cup.
+    return f"{int_part} {frac_str} cup of {item}"
+
+  # For all other converted units (lb, tbsp, tsp): fraction, round up to
+  # the nearest fourth.
+  int_part = int(amount)
+  frac = amount - int_part
+
+  if frac <= 1e-12:
+    u = unit if unit != "lb" else "lb"
+    return f"{int_part} {u} of {item}"
+
+  frac_str = _format_other_fraction(frac)
+
+  if int_part == 0:
+    return f"{frac_str} {unit} of {item}"
+  return f"{int_part} {frac_str} {unit} of {item}"
 
 
 @tool

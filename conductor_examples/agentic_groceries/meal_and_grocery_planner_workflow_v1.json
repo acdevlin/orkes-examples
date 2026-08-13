@@ -272,7 +272,7 @@
                 }
               ],
               "strategy": "handoff",
-              "maxTurns": 10,
+              "maxTurns": 5,
               "timeoutSeconds": 0,
               "external": false
             }
@@ -387,11 +387,19 @@
                   "inputSchema": {
                     "type": "object",
                     "properties": {
+                      "amount": {
+                        "type": "number"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
                       "item": {
                         "type": "string"
                       }
                     },
                     "required": [
+                      "amount",
+                      "unit",
                       "item"
                     ]
                   },
@@ -435,7 +443,7 @@
                 }
               ],
               "strategy": "handoff",
-              "maxTurns": 10,
+              "maxTurns": 5,
               "timeoutSeconds": 0,
               "external": false
             }
