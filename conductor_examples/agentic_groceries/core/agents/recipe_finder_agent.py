@@ -3,9 +3,9 @@ from typing import Optional
 from conductor.ai.agents import Agent, tool
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
-from bbc_recipe_scraper import scrape_recipes as scrape_bbc_recipes
-from thymeout_recipe_scraper import scrape_recipes as scrape_thymeout_recipes
-from prompts import (
+from data.scrapers.bbc_recipe_scraper import scrape_recipes as scrape_bbc_recipes
+from data.scrapers.thymeout_recipe_scraper import scrape_recipes as scrape_thymeout_recipes
+from prompts.recipe_finder import (
   RECIPE_FINDER_BBC_PROMPT_TEXT,
   RECIPE_FINDER_BBC_PROMPT_NAME,
   RECIPE_FINDER_BBC_PROMPT_DESCRIPTION,
@@ -13,12 +13,12 @@ from prompts import (
   RECIPE_FINDER_THYMEOUT_PROMPT_NAME,
   RECIPE_FINDER_THYMEOUT_PROMPT_DESCRIPTION,
 )
-from settings import (
+from config.settings import (
   SDK_MODEL,
   MAX_TURNS,
   SERVER_MODELS
 )
-from shared_utils import ensure_prompt
+from utils.shared_utils import ensure_prompt
 
 
 @tool

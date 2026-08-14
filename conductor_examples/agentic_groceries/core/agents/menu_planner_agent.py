@@ -5,18 +5,18 @@ from conductor.ai.agents import Agent, tool
 from conductor.ai.agents.tool import ToolContext
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
-from prompts import (
+from prompts.menu_planner import (
   MENU_PLANNER_PROMPT_TEXT,
   MENU_PLANNER_PROMPT_NAME,
   MENU_PLANNER_PROMPT_DESCRIPTION
 )
-from settings import (
+from config.settings import (
   SDK_MODEL,
   MAX_TURNS,
   SERVER_MODELS
 )
-from shared_utils import ensure_prompt
-from shopping_list_agent import render_ingredient
+from utils.shared_utils import ensure_prompt
+from core.agents.shopping_list_agent import render_ingredient
 
 DEFAULT_MEALS = ["breakfast", "lunch", "dinner"]
 

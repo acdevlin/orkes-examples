@@ -5,13 +5,10 @@ Shared utilities across all agents.
 from conductor.client.http.models.prompt_template import PromptTemplate
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
-from prompts import (
-  MENU_PLANNER_PROMPT_TEXT,
-  RECIPE_FINDER_BBC_PROMPT_TEXT,
-  RECIPE_FINDER_THYMEOUT_PROMPT_TEXT,
-  SHOPPING_LIST_PROMPT_TEXT,
-)
-from settings import HUMAN_APPROVER_EMAIL
+from prompts.shopping_list import SHOPPING_LIST_PROMPT_TEXT
+from prompts.menu_planner import MENU_PLANNER_PROMPT_TEXT
+from prompts.recipe_finder import RECIPE_FINDER_BBC_PROMPT_TEXT, RECIPE_FINDER_THYMEOUT_PROMPT_TEXT
+from config.settings import HUMAN_APPROVER_EMAIL
 
 _AGENT_PROMPTS = {
   "recipe_finder_bbc_agent": RECIPE_FINDER_BBC_PROMPT_TEXT,
@@ -45,7 +42,7 @@ def extract_tool_output(result, key):
 
 def _patch_task_prompts(task: dict) -> None:
   """Overwrite one task's embedded agent instructions with the current
-  prompt text from prompts.py, recursing into any fork branches.
+  prompt text from prompts, recursing into any fork branches.
 
   Args:
     task: A Conductor task definition dict (or fork branch task).
@@ -62,7 +59,7 @@ def _patch_task_prompts(task: dict) -> None:
 
 def patch_workflow_prompts(workflow: dict) -> dict:
   """Overwrite each agent task's embedded instructions in a workflow def
-  with the current prompt text from prompts.py.
+  with the current prompt text from prompts.
 
   Args:
     workflow: A Conductor workflow definition dict loaded from JSON.

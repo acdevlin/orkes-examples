@@ -12,7 +12,7 @@ import string
 import time
 from typing import Optional
 
-from scraper_utils import (
+from data.scrapers.scraper_utils import (
   _DEFAULT_AMOUNT,
   _DEFAULT_SERVINGS,
   _DIET_FILTER_BUFFER,

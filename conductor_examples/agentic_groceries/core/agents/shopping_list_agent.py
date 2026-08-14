@@ -13,17 +13,17 @@ from conductor.ai.agents import Agent, tool
 from conductor.ai.agents.tool import ToolContext
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 
-from prompts import (
+from prompts.shopping_list import (
   SHOPPING_LIST_PROMPT_TEXT,
   SHOPPING_LIST_PROMPT_NAME,
   SHOPPING_LIST_PROMPT_DESCRIPTION
 )
-from settings import (
+from config.settings import (
   SDK_MODEL,
   MAX_TURNS,
   SERVER_MODELS
 )
-from shared_utils import ensure_prompt
+from utils.shared_utils import ensure_prompt
 
 
 # US imperial conversions for the metric units recipes use. Only

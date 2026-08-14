@@ -13,16 +13,24 @@ from conductor.client.configuration.configuration import Configuration
 from conductor.client.orkes.orkes_prompt_client import OrkesPromptClient
 from conductor.client.orkes_clients import OrkesClients
 
-from menu_planner_agent import create_menu_planner_agent
-from menu_plan_formatter import ensure_format_menu_plan_worker
-from recipe_extractor import ensure_extract_recipes_worker, extract_recipes
-from recipe_finder_agent import (
+from config.settings import POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
+
+from core.agents.menu_planner_agent import create_menu_planner_agent
+from core.agents.shopping_list_agent import create_shopping_list_agent
+from core.agents.recipe_finder_agent import (
   create_recipe_finder_bbc_agent,
   create_recipe_finder_thymeout_agent,
 )
-from settings import POLL_INTERVAL_MS, SERVER_URL, WORKFLOW_FILE
-from shared_utils import extract_tool_output, patch_human_approver, patch_workflow_prompts
-from shopping_list_agent import create_shopping_list_agent
+from core.tools.menu_plan_formatter import ensure_format_menu_plan_worker
+
+from data.parsers.recipe_extractor import ensure_extract_recipes_worker, extract_recipes
+
+
+from utils.shared_utils import (
+  extract_tool_output, 
+  patch_human_approver, patch_workflow_prompts
+)
+
 
 
 def relax_tool_response_timeouts():
@@ -55,7 +63,7 @@ def upload_meal_planner_workflow(api_config):
   """
   with open(WORKFLOW_FILE, "r") as file:
     data = json.load(file)
-  # Keep the workflow's embedded agent prompts in sync with prompts.py.
+  # Keep the workflow's embedded agent prompts in sync with workflows/sync_prompts.py.
   patch_workflow_prompts(data)
   # Point the human menu approval task at the configured approver.
   patch_human_approver(data)
