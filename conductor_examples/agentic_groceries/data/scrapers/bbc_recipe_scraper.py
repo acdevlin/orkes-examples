@@ -36,14 +36,20 @@ _CONTAINERS = (
   "carton", "sachet", "box",
 )
 
-# Leading descriptors stripped from ingredient lines before parsing.
-_DESCRIPTORS = (
-  "small", "medium", "large", "big", "fresh", "ripe", "chopped", "grated",
-  "finely", "roughly", "crushed", "pitted", "peeled", "seeded", "tinned",
-  "frozen", "skinless", "boneless", "low-fat", "full-fat", "reduced-fat",
-  "ready-made", "unsalted", "salted", "extra", "virgin", "hot", "cold",
-  "warm", "sea", "rock", "semi", "soft", "splash", "drizzle",
-  "few", "good", "generous", "free-range",
+# Prep descriptors (actions done to the ingredient) - strip these.
+_PREP_DESCRIPTORS = (
+  "chopped", "grated", "finely", "roughly", "crushed", "pitted", "peeled",
+  "seeded", "tinned", "frozen", "minced", "diced", "sliced", "shredded",
+  "torn", "cubed", "julienned", "halved", "quartered", "rinsed", "drained",
+  "washed", "trimmed", "thawed", "defrosted",
+)
+
+# Ingredient characteristics (state/size/type) - keep these as part of the name.
+_INGREDIENT_DESCRIPTORS = (
+  "small", "medium", "large", "big", "fresh", "ripe", "skinless", "boneless",
+  "low-fat", "full-fat", "reduced-fat", "ready-made", "unsalted", "salted",
+  "extra", "virgin", "hot", "cold", "warm", "sea", "rock", "semi", "soft",
+  "splash", "drizzle", "few", "good", "generous", "free-range", "natural",
 )
 
 _FRACTIONS = {
@@ -73,8 +79,8 @@ _VEG_DIETS = ("VegetarianDiet", "VeganDiet")
 # two-word imperial alternatives ("fl oz") and a trailing quantified token
 # ("1lb 2oz") are consumed whole.
 _ALT_QTY_RE = (
-  r"(?<=[a-zA-Z])/\d*(?:\.\d+)?(?:[¼½¾⅓⅔⅛])?\s*[a-zA-Z]+"
-  r"(?:\s+(?:\d+[a-zA-Z]+|oz|lb|fl))?\.?(?=\s|$)"
+  r"(?<=[a-zA-Z])/[\d\-]*(?:\.\d+)?(?:[\xc2\xbc\xc2\xbd\xc2\xbe\xc2\xa8\xc2\xa9\xc2\xa8]?)?\s*[a-zA-Z]+(?:\s+(?:\[\d+a-zA-Z\]+|oz|lb|fl))?\.?(?=\s|$)"
+  r""
 )
 
 # "2 x 400g tins of chickpeas", and the bare form without a per-container
@@ -208,9 +214,63 @@ def parse_ingredient(line: str) -> dict:
   """
   body = line.strip().strip(".")
   body = body.lstrip("-+ −–—").strip()
-  body = re.split(r",| \(", body)[0].strip()
+
+  # Prep descriptors (actions done to the ingredient) - strip these.
+  _PREP_DESCRIPTORS = (
+    "chopped", "grated", "finely", "roughly", "crushed", "pitted", "peeled",
+    "seeded", "tinned", "frozen", "minced", "diced", "sliced", "shredded",
+    "torn", "cubed", "julienned", "halved", "quartered", "rinsed", "drained",
+    "washed", "trimmed", "thawed", "defrosted",
+  )
+
+  # Ingredient characteristics (state/size/type) - keep these as part of the name.
+  _INGREDIENT_DESCRIPTORS = (
+    "small", "medium", "large", "big", "fresh", "ripe", "skinless", "boneless",
+    "low-fat", "full-fat", "reduced-fat", "ready-made", "unsalted", "salted",
+    "extra", "virgin", "hot", "cold", "warm", "sea", "rock", "semi", "soft",
+    "splash", "drizzle", "few", "good", "generous", "free-range", "natural",
+  )
+
+  # Split on comma only when followed by a prep instruction word, not when
+  # the comma separates parts of the ingredient name (eg: "cold, cooked rice").
+  prep_words = (
+    "chopped", "diced", "sliced", "minced", "grated", "crushed", "peeled",
+    "seeded", "cooked", "raw", "frozen", "thawed", "defrosted", "rinsed",
+    "drained", "washed", "trimmed", "halved", "quartered", "cubed", "julienned",
+    "shredded", "torn", "roughly", "finely", "thinly", "thickly", "lengthwise",
+    "crosswise", "diagonally", "on the bias", "into pieces", "into strips",
+    "into cubes", "into chunks", "into wedges", "into rounds", "into slices",
+    "and chopped", "and diced", "and sliced", "or chopped", "or diced", "or sliced",
+  )
+  # Only split on comma followed by prep word, not on bare whitespace
+  prep_pattern = r",\s*(?:" + "|".join(prep_words) + r")\b"
+  body = re.split(prep_pattern, body, flags=re.I)[0].strip()
+
   body = re.sub(_ARTICLES_RE, "", body, flags=re.I)
-  body = re.sub(r"^(" + "|".join(_DESCRIPTORS) + r")\s+", "", body, flags=re.I).strip()
+
+  # Strip leading prep descriptors (actions) but keep ingredient characteristics.
+  prep_desc_pattern = r"^(" + "|".join(_PREP_DESCRIPTORS) + r")\s+"
+  body = re.sub(prep_desc_pattern, "", body, flags=re.I).strip()
+
+  # Strip leading ingredient characteristics/descriptors (state/size/type)
+  # that are not the actual ingredient name (eg: "swede" in "swede or parsnips",
+  # "cold" in "cold cooked rice", "low-sodium" in "low-sodium soy sauce").
+  # These are kept only if followed by a known unit or countable item.
+  ingredient_desc_pattern = r"^(" + "|".join(_INGREDIENT_DESCRIPTORS) + r")\s+"
+  def _strip_ingredient_desc(match):
+      desc = match.group(1)
+      rest = body[match.end():].strip()
+      # If rest starts with a known unit, this is likely a descriptor, strip it
+      for u in _UNITS:
+          if re.match(rf"^{re.escape(u)}(?=\s|$)", rest, re.I):
+              return ""
+      # If rest starts with a known countable item (from _PLURAL_ITEMS), keep it
+      # Otherwise strip the descriptor
+      return ""
+  body = re.sub(ingredient_desc_pattern, _strip_ingredient_desc, body, flags=re.I).strip()
+
+  # Prep descriptors (actions done to the ingredient) - strip these.
+  body = re.sub(prep_desc_pattern, "", body, flags=re.I).strip()
 
   # Strip alternative quantities like "500g/1lb 2oz" (see _ALT_QTY_RE).
   body = re.sub(_ALT_QTY_RE, "", body).strip()

@@ -171,10 +171,7 @@
       "taskReferenceName": "join_ref",
       "inputParameters": {},
       "type": "JOIN",
-      "joinOn": [
-        "recipe_finder_bbc_agent",
-        "recipe_finder_thymeout_agent_ref"
-      ],
+      "joinOn": ["recipe_finder_bbc_agent", "recipe_finder_thymeout_agent_ref"],
       "optional": false,
       "asyncComplete": false
     },
@@ -258,9 +255,7 @@
                         "items": {}
                       }
                     },
-                    "required": [
-                      "recipes"
-                    ]
+                    "required": ["recipes"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -348,7 +343,7 @@
         "text": "",
         "pollIntervalSeconds": 1,
         "name": "shopping_list_agent",
-        "prompt": "Add the following required ingredients to my shopping list:\n${menu_planner_agent_ref.output.output.context.required_ingredients}\nThen show me the list."
+        "prompt": "Add the following required ingredients to my shopping list:\n${menu_planner_agent_ref.output.text}\nThen show me the list."
       },
       "type": "AGENT",
       "decisionCases": {},
@@ -397,11 +392,7 @@
                         "type": "string"
                       }
                     },
-                    "required": [
-                      "amount",
-                      "unit",
-                      "item"
-                    ]
+                    "required": ["amount", "unit", "item"]
                   },
                   "outputSchema": {
                     "type": "object",
@@ -452,14 +443,10 @@
       }
     }
   ],
-  "inputParameters": [
-    "query",
-    "people_count",
-    "recipe_count"
-  ],
+  "inputParameters": ["query", "people_count", "recipe_count"],
   "outputParameters": {
     "menu_plan": "${format_menu_plan_ref.output.result}",
-    "shopping_list": "${shopping_list_agent_ref.output.output.context.shopping_list}"
+    "shopping_list": "${shopping_list_agent_ref.output.context.shopping_list}"
   },
   "failureWorkflow": "",
   "schemaVersion": 2,

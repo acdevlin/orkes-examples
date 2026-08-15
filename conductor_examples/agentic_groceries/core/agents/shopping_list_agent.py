@@ -191,8 +191,10 @@ def render_ingredient(amount: float, unit: Optional[str], item: str) -> str:
   """
   if unit is None or unit == "null" or unit == "of":
     # Countable item (e.g. eggs, tomatoes).
-    # Round to nearest integer, but display as fraction if amount is 
-    # close to a half or quarter.
+    # For shopping: fractional amounts < 1 round up to 1 (smallest purchasable unit).
+    # Amounts >= 1 round to nearest integer, with fraction display for 1/2, 1/4, 3/4.
+    if amount <= 1:
+      return f"1 {item}"
     rounded = round(amount)
     if abs(amount - rounded) < 0.01 and amount != rounded:
         # Display as fraction for common fractions

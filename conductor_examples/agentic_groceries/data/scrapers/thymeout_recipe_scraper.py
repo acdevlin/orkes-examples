@@ -131,7 +131,18 @@ def parse_ingredient(qty: str, text: str) -> dict:
     An {amount, unit, item} dict. Rows without a quantity default to an
     amount of 1 and no unit.
   """
-  body = text.strip().split(",")[0].strip()
+  # Split on comma only when followed by a prep instruction word.
+  prep_words = (
+    "chopped", "diced", "sliced", "minced", "grated", "crushed", "peeled",
+    "seeded", "cooked", "raw", "frozen", "thawed", "defrosted", "rinsed",
+    "drained", "washed", "trimmed", "halved", "quartered", "cubed", "julienned",
+    "shredded", "torn", "roughly", "finely", "thinly", "thickly", "lengthwise",
+    "crosswise", "diagonally", "on the bias", "into pieces", "into strips",
+    "into cubes", "into chunks", "into wedges", "into rounds", "into slices",
+    "and chopped", "and diced", "and sliced", "or chopped", "or diced", "or sliced",
+  )
+  prep_pattern = r"(?:\s*,\s*|\s+)(?:" + "|".join(prep_words) + r")\b"
+  body = re.split(prep_pattern, text.strip(), flags=re.I)[0].strip()
   unit = None
   rest = body
   for candidate in _UNITS:
